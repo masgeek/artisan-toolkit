@@ -1,57 +1,57 @@
 {
-    "$schema": "https://getcomposer.org/schema.json",
-    "name": "masgeek/artisan-toolkit",
-    "description": "A collection of custom and override Artisan commands for Laravel. Enable only what you need via a published config.",
-    "type": "library",
-    "license": "MIT",
-    "keywords": [
-        "laravel",
-        "artisan",
-        "commands",
-        "override",
-        "toolkit",
-        "schema"
-    ],
-    "authors": [
-        {
-            "name": "masgeek",
-            "email": "munywelebarasa@gmail.com"
-        }
-    ],
-    "require": {
-        "php": "^8.2",
-        "laravel/framework": "13.8.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "Masgeek\\ArtisanToolkit\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Masgeek\\ArtisanToolkit\\Tests\\": "tests/"
-        }
-    },
-    "require-dev": {
-        "orchestra/testbench": "^9.0|^10.0",
-        "phpunit/phpunit": "^11.0|^12.0"
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Masgeek\\ArtisanToolkit\\ArtisanToolkitServiceProvider"
-            ]
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
-    "scripts": {
-        "test": "vendor/bin/phpunit --no-coverage",
-        "test:coverage": "vendor/bin/phpunit"
-    },
-    "config": {
-        "optimize-autoloader": true,
-        "preferred-install": "dist",
-        "sort-packages": true
+  "$schema": "https://getcomposer.org/schema.json",
+  "name": "masgeek/artisan-toolkit",
+  "description": "A collection of custom and override Artisan commands for Laravel. Enable only what you need via a published config.",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "laravel",
+    "artisan",
+    "commands",
+    "override",
+    "toolkit",
+    "schema"
+  ],
+  "authors": [
+    {
+      "name": "masgeek",
+      "email": "munywelebarasa@gmail.com"
     }
+  ],
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^11|^12"
+  },
+  "autoload": {
+    "psr-4": {
+      "Masgeek\\ArtisanToolkit\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Masgeek\\ArtisanToolkit\\Tests\\": "tests/"
+    }
+  },
+  "require-dev": {
+    "orchestra/testbench": "^9.0|^10.0",
+    "phpunit/phpunit": "^11.0|^12.0"
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Masgeek\\ArtisanToolkit\\ArtisanToolkitServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "scripts": {
+    "test": "vendor/bin/phpunit --no-coverage",
+    "test:coverage": "vendor/bin/phpunit"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
 }
