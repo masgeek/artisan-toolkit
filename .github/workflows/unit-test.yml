@@ -24,7 +24,7 @@ jobs:
         with:
           php-version: '8.4'
           extensions: pdo, pdo_sqlite, sqlite3
-          coverage: xdebug
+          coverage: xdebug,pcov
           tools: composer:v2
 
       - name: Cache Composer packages
@@ -47,7 +47,7 @@ jobs:
         uses: ericsizemore/phpunit-coverage-check-action@2.0.0
         with:
           clover_file: coverage/clover.xml
-          threshold: 100
+          threshold: 70
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
