@@ -8,29 +8,21 @@ on:
 
 jobs:
   unit-test:
-    name: PHP ${{ matrix.php }} – ${{ matrix.dependency-version }}
+    name: PHP 8.4
     runs-on: ubuntu-24.04
 
     concurrency:
-      group: unit-test-${{ github.ref }}-${{ matrix.php }}
+      group: unit-test-${{ github.ref }}
       cancel-in-progress: true
-
-    strategy:
-      fail-fast: false
-      matrix:
-        php:
-          - '8.4'
-        dependency-version:
-          - prefer-stable
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PHP ${{ matrix.php }}
+      - name: Set up PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.4'
           extensions: pdo, pdo_sqlite, sqlite3
           coverage: xdebug
           tools: composer:v2
@@ -39,10 +31,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache
-          key: composer-php${{ matrix.php }}-${{ matrix.dependency-version }}-${{ hashFiles('**/composer.json') }}
-          restore-keys: |
-            composer-php${{ matrix.php }}-${{ matrix.dependency-version }}-
-            composer-php${{ matrix.php }}-
+          key: composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: composer-
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
@@ -67,5 +57,5 @@ jobs:
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-php-${{ matrix.php }}
+          name: coverage-report
           path: coverage/
