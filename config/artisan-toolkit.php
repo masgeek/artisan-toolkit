@@ -36,7 +36,7 @@ return [
 
     'commands' => [
 
-        // 'my:command' => \Masgeek\ArtisanToolkit\Commands\MyCommand::class,
+        'make:enum' => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
 
     ],
 

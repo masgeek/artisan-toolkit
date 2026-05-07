@@ -62,6 +62,43 @@ Output when `--prune` is used:
 Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 ```
 
+## Available commands
+
+### `make:enum`
+
+Laravel has no built-in enum generator. This command creates a PHP enum in `app/Enums/`.
+
+```bash
+# Pure (unbacked) enum
+php artisan make:enum Status
+
+# Backed string enum with cases pre-filled
+php artisan make:enum UserRole --backed=string --cases=Admin,Partner,User
+
+# Backed int enum in a sub-namespace
+php artisan make:enum Billing/InvoiceStatus --backed=int --cases=Draft,Pending,Paid,Void
+
+# Overwrite an existing file
+php artisan make:enum UserRole --force
+```
+
+Example output for `php artisan make:enum UserRole --backed=string --cases=Admin,Partner,User`:
+
+```php
+<?php
+
+namespace App\Enums;
+
+enum UserRole: string
+{
+    case Admin = 'admin';
+    case Partner = 'partner';
+    case User = 'user';
+}
+```
+
+Sub-namespaces (e.g. `Billing/InvoiceStatus`) are placed under `app/Enums/Billing/` with the correct `namespace App\Enums\Billing;` declaration.
+
 ## Adding new commands
 
 1. Create a class in `src/Commands/` using namespace `Masgeek\ArtisanToolkit\Commands`.
