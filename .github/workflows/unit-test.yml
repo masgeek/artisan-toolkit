@@ -44,15 +44,10 @@ jobs:
         run: composer test:coverage
 
       - name: Check coverage threshold (≥75%)
-        run: |
-          pct=$(grep -oP 'coveredelements="\K[0-9.]+' coverage/clover.xml)
-          total=$(grep -oP 'elements="\K[0-9.]+' coverage/clover.xml | head -1)
-          coverage=$(awk "BEGIN {printf \"%.2f\", ($pct/$total)*100}")
-          echo "Code coverage: ${coverage}%"
-          if (( $(echo "$coverage < 75" | bc -l) )); then
-            echo "::error::Coverage ${coverage}% is below the required 75% threshold."
-            exit 1
-          fi
+        uses: mheap/phpunit-coverage-check-action@v1
+        with:
+          clover: coverage/clover.xml
+          min-coverage: 75
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
