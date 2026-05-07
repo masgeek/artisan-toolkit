@@ -1,30 +1,32 @@
 name: BumpVersion
 on:
-  push:
-    branches:
-      - 'main'
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["UnitTests"]
+    types: [completed]
 
 jobs:
   bump-tag-version:
     runs-on: ubuntu-24.04
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     permissions:
       contents: write
     concurrency:
       cancel-in-progress: true
       group: bump-version-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Generate Tag
         id: tag_version
         uses: masgeek/github-tag-action@release
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag_prefix: "v"
+          tag_prefix: ""
           create_annotated_tag: true
 
       - name: Create a GitHub release
-        uses: ncipollo/release-action@v1.16.0
+        uses: ncipollo/release-action@v1.21.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.tag_version.outputs.new_tag }}
