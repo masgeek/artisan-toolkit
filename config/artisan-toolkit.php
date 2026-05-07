@@ -20,7 +20,23 @@ return [
 
     'overrides' => [
 
-        'schema:dump' => \Masgeek\ArtisanOverrides\Commands\SchemaDumpCommand::class,
+        'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Commands
+    |--------------------------------------------------------------------------
+    |
+    | Register additional Artisan commands provided by this package.
+    | Set a command to false to disable it.
+    |
+    */
+
+    'commands' => [
+
+        // 'my:command' => \Masgeek\ArtisanToolkit\Commands\MyCommand::class,
 
     ],
 

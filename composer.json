@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "masgeek/artisan-overrides",
-    "description": "Selectively override Laravel's built-in Artisan commands with safer, smarter alternatives. Enable only what you need via a published config.",
+    "name": "masgeek/artisan-toolkit",
+    "description": "A collection of custom and override Artisan commands for Laravel. Enable only what you need via a published config.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -9,6 +9,7 @@
         "artisan",
         "commands",
         "override",
+        "toolkit",
         "schema"
     ],
     "authors": [
@@ -23,13 +24,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Masgeek\\ArtisanOverrides\\": "src/"
+            "Masgeek\\ArtisanToolkit\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Masgeek\\ArtisanOverrides\\ArtisanOverridesServiceProvider"
+                "Masgeek\\ArtisanToolkit\\ArtisanToolkitServiceProvider"
             ]
         }
     },

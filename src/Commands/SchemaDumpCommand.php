@@ -1,6 +1,6 @@
 <?php
 
-namespace Masgeek\ArtisanOverrides\Commands;
+namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Connection;

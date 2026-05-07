@@ -1,28 +1,28 @@
-# masgeek/artisan-overrides
+# masgeek/artisan-toolkit
 
-Selectively replace Laravel's built-in Artisan commands with safer, smarter alternatives. Enable only the overrides you need via a single published config file.
+A collection of custom and override Artisan commands for Laravel. Enable only what you need via a single published config file.
 
 ## Installation
 
 ```bash
-composer require masgeek/artisan-overrides
+composer require masgeek/artisan-toolkit
 ```
 
 Publish the config:
 
 ```bash
-php artisan vendor:publish --tag=artisan-overrides-config
+php artisan vendor:publish --tag=artisan-toolkit-config
 ```
 
 ## Configuration
 
-The published `config/artisan-overrides.php` controls which commands are active:
+The published `config/artisan-toolkit.php` controls which commands are active:
 
 ```php
 return [
     'overrides' => [
         // Enabled — uses the package's safer implementation
-        'schema:dump' => \Masgeek\ArtisanOverrides\Commands\SchemaDumpCommand::class,
+        'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
 
         // Disabled — leave the built-in untouched
         // 'schema:dump' => false,
@@ -30,10 +30,15 @@ return [
         // Custom — provide your own class instead
         // 'schema:dump' => App\Console\Commands\MyDump::class,
     ],
+
+    'commands' => [
+        // Register additional custom commands here
+        // 'my:command' => \Masgeek\ArtisanToolkit\Commands\MyCommand::class,
+    ],
 ];
 ```
 
-Setting a value to `false` (or removing the entry) disables that override and leaves Laravel's built-in in place.
+Setting a value to `false` (or removing the entry) disables that command and leaves Laravel's built-in in place.
 
 ## Available overrides
 
@@ -57,11 +62,13 @@ Output when `--prune` is used:
 Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 ```
 
-## Adding new overrides
+## Adding new commands
 
-1. Create a class in `src/Commands/` that extends the built-in command you want to replace.
-2. Add it to `config/artisan-overrides.php` under `overrides`.
-3. The service provider will register it automatically when enabled.
+1. Create a class in `src/Commands/` using namespace `Masgeek\ArtisanToolkit\Commands`.
+   - To **override** a built-in: extend the original command class and change the behaviour.
+   - To **add** a new command: extend `Illuminate\Console\Command` as normal.
+2. Add it to the appropriate section in `config/artisan-toolkit.php` (`overrides` or `commands`).
+3. The service provider registers it automatically when enabled.
 
 ## License
 
