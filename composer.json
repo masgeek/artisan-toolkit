@@ -27,6 +27,15 @@
             "Masgeek\\ArtisanToolkit\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Masgeek\\ArtisanToolkit\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^11.0|^12.0"
+    },
     "extra": {
         "laravel": {
             "providers": [
@@ -36,6 +45,10 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/phpunit --no-coverage",
+        "test:coverage": "vendor/bin/phpunit"
+    },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
