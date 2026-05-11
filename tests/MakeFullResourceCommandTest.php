@@ -2,6 +2,7 @@
 
 namespace Masgeek\ArtisanToolkit\Tests;
 
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
@@ -157,6 +158,9 @@ class MakeFullResourceCommandTest extends TestCase
         $this->assertFileExists($this->resourcesPath . '/RelProfileResource.php');
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function test_it_skips_existing_related_resource(): void
     {
         Schema::create('coverage_rel_skip_models', function ($table) {
