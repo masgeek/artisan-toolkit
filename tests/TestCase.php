@@ -21,7 +21,11 @@ abstract class TestCase extends OrchestraTestCase
         ]);
 
         config()->set('artisan-toolkit.commands', [
-            'make:enum' => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
+            'make:enum'          => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
+            'make:api-scaffold'  => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
+            'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
+            'make:repo'          => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+            'model:relations'    => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
         ]);
     }
 }
