@@ -6,14 +6,15 @@ on:
     branches: [ main,develop ]
   workflow_dispatch:
 
+concurrency:
+  group: unit-test-${{ github.repository_owner }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-test:
-    name: PHP 8.4
+    name: UnitTests
     runs-on: ubuntu-24.04
 
-    concurrency:
-      group: unit-test-${{ github.ref }}
-      cancel-in-progress: true
 
     steps:
       - name: Checkout repository
