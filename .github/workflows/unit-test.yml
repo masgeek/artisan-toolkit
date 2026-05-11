@@ -6,14 +6,15 @@ on:
     branches: [ main,develop ]
   workflow_dispatch:
 
+concurrency:
+  group: unit-test-${{ github.repository_owner }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-test:
-    name: PHP 8.4
+    name: UnitTests
     runs-on: ubuntu-24.04
-
-    concurrency:
-      group: unit-test-${{ github.ref }}
-      cancel-in-progress: true
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -50,7 +51,7 @@ jobs:
           threshold: 70
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
