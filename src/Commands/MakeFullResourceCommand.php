@@ -17,7 +17,7 @@ class MakeFullResourceCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $name = $this->argument('name');
         $model = $this->option('model');
@@ -34,7 +34,7 @@ class MakeFullResourceCommand extends Command
         if (file_exists($resourcePath) || file_exists($collectionPath)) {
             $this->error('One or both resources already exist. Use --force to overwrite.');
 
-            return false;
+            return self::FAILURE;
         }
 
         (new Filesystem)->ensureDirectoryExists(app_path('Http/Resources'));
@@ -139,6 +139,8 @@ PHP;
         file_put_contents($collectionPath, $collectionStub);
 
         $this->info("Resource '{$name}' and 'Collections/{$name}Collection' created successfully.");
+
+        return self::SUCCESS;
     }
 
     /**

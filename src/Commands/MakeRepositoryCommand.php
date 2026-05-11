@@ -11,7 +11,7 @@ class MakeRepositoryCommand extends Command
 
     protected $description = 'Create a new repository class';
 
-    public function handle(): bool
+    public function handle(): int
     {
         $name = $this->argument('name');
         $model = $this->option('model');
@@ -20,14 +20,13 @@ class MakeRepositoryCommand extends Command
         if (file_exists($repositoryPath)) {
             $this->error("Repository '{$name}' already exists!");
 
-            return false;
+            return self::FAILURE;
         }
 
         (new Filesystem)->ensureDirectoryExists(app_path('Repositories'));
 
         $modelClass = $model ? "\\App\\Models\\{$model}" : '';
         $modelImport = $model ? "use {$modelClass};" : '';
-        //        $modelVariable = $model ? lcfirst(class_basename($model)) : 'model';
         $modelVariable = 'model';
         $modelType = $model ?: 'Model';
 
@@ -57,6 +56,6 @@ PHP;
 
         $this->info("Repository '{$name}' created successfully.");
 
-        return true;
+        return self::SUCCESS;
     }
 }

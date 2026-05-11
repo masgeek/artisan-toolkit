@@ -52,7 +52,10 @@ class ListModelRelationsCommand extends Command
         }
 
         // Extract relationships
-        $relations = $this->getModelRelations(modelClass: new $modelClass, baseModelClass: new $baseModelClass);
+        $relations = $this->getModelRelations(
+            modelClass: new $modelClass,
+            baseModelClass: $baseModelClass ? new $baseModelClass : null,
+        );
 
         if (empty($relations)) {
             $this->info("No relationships found in {$modelClass} or its base model.");
@@ -91,6 +94,10 @@ class ListModelRelationsCommand extends Command
 
     private function extractRelationships($model): array
     {
+        if ($model === null) {
+            return [];
+        }
+
         $relations = [];
         $methods = (new \ReflectionClass($model))->getMethods();
 

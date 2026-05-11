@@ -26,6 +26,11 @@ class SchemaDumpCommand extends DumpCommand
 
     protected $description = 'Dump the database schema; --prune removes only already-run migration files';
 
+    /**
+     * @param ConnectionResolverInterface $connections
+     * @param Dispatcher $dispatcher
+     * @return int
+     */
     public function handle(ConnectionResolverInterface $connections, Dispatcher $dispatcher): int
     {
         if ($this->isProhibited()) {
