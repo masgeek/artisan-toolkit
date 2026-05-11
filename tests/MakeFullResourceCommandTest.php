@@ -192,7 +192,7 @@ class MakeFullResourceCommandTest extends TestCase
             File::get($this->resourcesPath . '/SkipPostResource.php')
         );
 
-        $this->assertFileExists($this->resourcesPath . '/SkiptagResource.php');
+        $this->assertFileExists($this->resourcesPath . '/SkipTagResource.php');
     }
 
     public function test_it_falls_back_to_placeholder_when_model_table_missing(): void
