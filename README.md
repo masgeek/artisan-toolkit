@@ -21,19 +21,15 @@ The published `config/artisan-toolkit.php` controls which commands are active:
 ```php
 return [
     'overrides' => [
-        // Enabled — uses the package's safer implementation
         'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
-
-        // Disabled — leave the built-in untouched
-        // 'schema:dump' => false,
-
-        // Custom — provide your own class instead
-        // 'schema:dump' => App\Console\Commands\MyDump::class,
     ],
 
     'commands' => [
-        // Register additional custom commands here
-        // 'my:command' => \Masgeek\ArtisanToolkit\Commands\MyCommand::class,
+        'make:enum'          => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
+        'make:repo'          => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+        'make:api-scaffold'  => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
+        'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
+        'model:relations'    => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
     ],
 ];
 ```
@@ -98,6 +94,109 @@ enum UserRole: string
 ```
 
 Sub-namespaces (e.g. `Billing/InvoiceStatus`) are placed under `app/Enums/Billing/` with the correct `namespace App\Enums\Billing;` declaration.
+
+### `make:repo`
+
+Creates a repository class in `app/Repositories/` extending `BaseRepository`. Optionally binds it to an Eloquent model.
+
+```bash
+# Create a repository without a model
+php artisan make:repo UserRepo
+
+# Create a repository bound to a specific model
+php artisan make:repo PostRepo --model=Post
+```
+
+Example output for `php artisan make:repo PostRepo --model=Post`:
+
+```php
+<?php
+
+namespace App\Repositories;
+
+use App\Models\Post;
+
+/**
+ * @extends \App\Repositories\BaseRepo<Post>
+ */
+class PostRepo extends \App\Repositories\BaseRepository
+{
+    protected Post $model;
+
+    protected function model(): string
+    {
+        return Post::class;
+    }
+}
+```
+
+### `make:api-scaffold`
+
+Scaffolds a full API controller, repository, resource, and resource collection for a given name.
+
+```bash
+# Create all four files with default pluralised route
+php artisan make:api-scaffold Currency
+
+# Use a different model class than the scaffold name
+php artisan make:api-scaffold Currency --model=MyCurrency
+
+# Overwrite existing files
+php artisan make:api-scaffold Currency --force
+
+# Skip automatic route registration in routes/api.php
+php artisan make:api-scaffold Currency --no-route
+
+# Custom URL prefix for the route
+php artisan make:api-scaffold Currency --prefix=my-currencies
+```
+
+Files generated:
+- `app/Http/Controllers/Api/{Name}Controller.php`
+- `app/Repositories/{Name}Repo.php`
+- `app/Http/Resources/{Name}Resource.php`
+- `app/Http/Resources/Collections/{Name}ResourceCollection.php`
+
+When `--no-route` is omitted, the command also registers a `GET /v1/{prefix}` route inside the `throttle:120,1` group in `routes/api.php`. The prefix defaults to the kebab-case plural of the name (e.g. `currencies` for `Currency`).
+
+### `make:resource-full`
+
+Creates an API Resource and its Resource Collection. Can inspect an existing model to pre-fill the `toArray()` fields.
+
+```bash
+# Basic resource and collection with placeholder fields
+php artisan make:resource-full UserResource
+
+# Specify the model explicitly (inferred from name if it ends in 'Resource')
+php artisan make:resource-full UserResource --model=User
+
+# Auto-detect relationships from the model and generate related resources
+php artisan make:resource-full UserResource --model=User --with-relationships
+```
+
+Files generated:
+- `app/Http/Resources/{Name}.php`
+- `app/Http/Resources/Collections/{Name}Collection.php`
+
+When `--with-relationships` is used, the command inspects the model's public methods returning Eloquent Relation instances, adds relation lines to `toArray()`, generates missing related resource classes, and adds the necessary `use` imports.
+
+### `model:relations`
+
+Lists all Eloquent relationships defined in a model class by inspecting method return types.
+
+```bash
+# List relations for a specific model
+php artisan model:relations "App\Models\User"
+```
+
+Example output:
+
+```
+Relationships in App\Models\User (including base model):
+[ "posts", "profile", "roles" ]
+```
+
+If the model extends a base model in `App\Models\Base\`, relationships from both the parent and child are listed. Non-existent models produce an error message.
 
 ## Adding new commands
 
