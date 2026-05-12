@@ -26,6 +26,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Model Scan Paths
+    |--------------------------------------------------------------------------
+    |
+    | Directories (relative to base_path) that model:prune-orphaned will scan
+    | when no --path option is supplied on the CLI.  Add or remove entries to
+    | match the model layout of your application.
+    |
+    */
+
+    'model_scan_paths' => [
+        'app/Models',
+        'app/Models/Base',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Commands
     |--------------------------------------------------------------------------
     |
