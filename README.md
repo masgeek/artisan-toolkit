@@ -16,7 +16,7 @@ php artisan vendor:publish --tag=artisan-toolkit-config
 
 ## Configuration
 
-The published `config/artisan-toolkit.php` controls which commands are active:
+The published `config/artisan-toolkit.php` controls which commands are active and configures package-wide settings:
 
 ```php
 return [
@@ -24,17 +24,35 @@ return [
         'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
     ],
 
+    'model_scan_paths' => [
+        'app/Models',
+        'app/Models/Base',
+    ],
+
     'commands' => [
-        'make:enum'          => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
-        'make:repo'          => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
-        'make:api-scaffold'  => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
-        'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
-        'model:relations'    => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
+        'make:enum'            => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
+        'make:repo'            => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+        'make:api-scaffold'    => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
+        'make:resource-full'   => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
+        'model:relations'      => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
+        'model:prune-orphaned' => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
     ],
 ];
 ```
 
-Setting a value to `false` (or removing the entry) disables that command and leaves Laravel's built-in in place.
+Setting a command value to `false` (or removing the entry) disables it and leaves Laravel's built-in in place.
+
+### `model_scan_paths`
+
+Directories (relative to your app's base path) that `model:prune-orphaned` scans when no `--path` option is given on the CLI. Adjust this list to match your project's model layout:
+
+```php
+'model_scan_paths' => [
+    'app/Models',
+    'app/Models/Base',
+    'app/Domain/Shared/Models', // example custom path
+],
+```
 
 ## Available overrides
 
@@ -197,6 +215,33 @@ Relationships in App\Models\User (including base model):
 ```
 
 If the model extends a base model in `App\Models\Base\`, relationships from both the parent and child are listed. Non-existent models produce an error message.
+
+### `model:prune-orphaned`
+
+Scans one or more model directories and reports any model files that have **no backing database table** and **no references** anywhere in the codebase. By default it only lists candidates; pass `--delete` to remove them.
+
+```bash
+# List orphaned models using paths from config
+php artisan model:prune-orphaned
+
+# Scan specific directories (overrides config)
+php artisan model:prune-orphaned --path=app/Models --path=app/Models/Base
+
+# Delete orphaned models (prompts for confirmation)
+php artisan model:prune-orphaned --delete
+
+# Delete without confirmation prompt
+php artisan model:prune-orphaned --delete --force
+```
+
+The directories scanned when no `--path` is given are controlled by `model_scan_paths` in the published config file (see [Configuration](#configuration)).
+
+A model is considered orphaned only when **both** conditions are true:
+
+- `Schema::hasTable()` returns `false` for its table
+- No other `.php` file under the search path (default `app/`) references the class by name or fully-qualified class name
+
+Non-Eloquent PHP files (plain classes, interfaces, traits) found in the model directories are silently skipped. Missing directories produce a warning and are skipped; the command only fails when every configured path is missing.
 
 ## Adding new commands
 
