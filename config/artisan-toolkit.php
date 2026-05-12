@@ -41,7 +41,8 @@ return [
         'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
         'make:repo' => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
 
-        'model:relations' => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
+        'model:relations'        => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
+        'model:prune-orphaned'   => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
     ],
 
 ];
