@@ -42,8 +42,18 @@ vendor/bin/phpunit tests/SchemaDumpCommandTest.php  # single file
 | Push to `develop` | Auto PR created targeting `main` (via `next-release.yml`) |
 | Push to `main` (tests pass) | Auto bump-tag + GitHub release (via `bump-and-tag.yml`) |
 
-## git conventions
+## git & commit conventions
 
-- Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
-- Breaking changes use `!` suffix (e.g. `feat!:`).
-- Branches: `main` (stable) ← `develop` (integration).
+- Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
+- Split unrelated changes into separate commits — never mix features, fixes, and chores in one commit.
+- Keep descriptions clear and imperative ("add" not "added").
+
+### Breaking changes
+
+- Mark with `!` after the type (e.g. `feat!:` or `fix!:`) **and/or** a `BREAKING CHANGE:` footer.
+- Must be isolated in their own commit — never hidden inside a normal commit.
+- Describe what changed, what breaks, and migration steps for downstream users.
+
+### Branches
+
+- `main` (stable) ← `develop` (integration).
