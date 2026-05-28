@@ -175,6 +175,28 @@ class PruneOrphanedModelsCommandTest extends TestCase
         $this->assertFileExists($filePath);
     }
 
+    public function test_verbose_output_shows_table_status_and_references(): void
+    {
+        $orphanClass = 'VerboseOrphan'.uniqid();
+        $this->writeModelFile($this->modelsPath, $orphanClass);
+
+        $referencedClass = 'VerboseReferenced'.uniqid();
+        $this->writeModelFile($this->modelsPath, $referencedClass);
+        file_put_contents(
+            $this->searchPath.DIRECTORY_SEPARATOR.'SomeService.php',
+            "<?php\nuse App\\Models\\{$referencedClass};\nclass SomeService {}"
+        );
+
+        $this->artisan('model:prune-orphaned', [
+            '--path'    => [$this->modelsPath],
+            '--search'  => $this->searchPath,
+            '--verbose' => true,
+        ])->assertSuccessful()
+            ->expectsOutputToContain('missing')
+            ->expectsOutputToContain('none')
+            ->expectsOutputToContain('1 file(s)');
+    }
+
     private function writeModelFile(
         string $dir,
         string $className,

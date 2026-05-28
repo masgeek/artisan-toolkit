@@ -51,7 +51,14 @@ class PruneOrphanedModelsCommand extends Command
                     continue;
                 }
 
-                if ($this->hasBackingTable($class) || $this->hasReferences($class, $file->getRealPath(), $searchPath)) {
+                $hasTable = $this->hasBackingTable($class);
+                $refs     = $this->findReferences($class, $file->getRealPath(), $searchPath);
+
+                if ($this->output->isVerbose()) {
+                    $this->printVerboseRow($class, $hasTable, $refs);
+                }
+
+                if ($hasTable || ! empty($refs)) {
                     continue;
                 }
 
@@ -90,6 +97,23 @@ class PruneOrphanedModelsCommand extends Command
         $this->info(count($orphaned).' orphaned model file(s) deleted.');
 
         return self::SUCCESS;
+    }
+
+    /** @param string[] $refs */
+    private function printVerboseRow(string $class, bool $hasTable, array $refs): void
+    {
+        $tableLabel = $hasTable ? '<fg=green>found</>' : '<fg=red>missing</>';
+        $this->line("  <fg=cyan>{$class}</>");
+        $this->line("    table:      {$tableLabel}");
+
+        if (empty($refs)) {
+            $this->line('    references: <fg=red>none</>');
+        } else {
+            $this->line('    references: '.count($refs).' file(s)');
+            foreach ($refs as $ref) {
+                $this->line("      - {$ref}");
+            }
+        }
     }
 
     /** @param  string[]  $paths */
@@ -163,13 +187,15 @@ class PruneOrphanedModelsCommand extends Command
         }
     }
 
-    private function hasReferences(string $class, string $modelPath, string $searchPath): bool
+    /** @return string[] Paths of files that reference the class */
+    private function findReferences(string $class, string $modelPath, string $searchPath): array
     {
         if (! $this->files->isDirectory($searchPath)) {
-            return false;
+            return [];
         }
 
         $shortName = class_basename($class);
+        $refs      = [];
 
         foreach ((new Finder())->in($searchPath)->name('*.php')->files() as $file) {
             if ($file->getRealPath() === $modelPath) {
@@ -180,10 +206,10 @@ class PruneOrphanedModelsCommand extends Command
 
             if (preg_match('/\b'.preg_quote($shortName, '/').'\\b/', $content) ||
                 str_contains($content, $class)) {
-                return true;
+                $refs[] = $file->getRealPath();
             }
         }
 
-        return false;
+        return $refs;
     }
 }
