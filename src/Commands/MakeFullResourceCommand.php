@@ -28,7 +28,7 @@ class MakeFullResourceCommand extends Command
         }
 
         $resourcePath = app_path("Http/Resources/{$name}.php");
-        $collectionDir = app_path('Http/Resources/Collections');
+        $collectionDir = app_path('Http/Resources/Collection');
         $collectionPath = $collectionDir."/{$name}Collection.php";
 
         if (file_exists($resourcePath) || file_exists($collectionPath)) {
@@ -122,7 +122,7 @@ PHP;
         $collectionStub = <<<PHP
 <?php
 
-namespace App\Http\Resources\Collections;
+namespace App\Http\Resources\Collection;
 
 class {$name}Collection extends \Illuminate\Http\Resources\Json\ResourceCollection
 {
@@ -138,7 +138,7 @@ PHP;
         file_put_contents($resourcePath, $resourceStub);
         file_put_contents($collectionPath, $collectionStub);
 
-        $this->info("Resource '{$name}' and 'Collections/{$name}Collection' created successfully.");
+        $this->info("Resource '{$name}' and 'Collection/{$name}Collection' created successfully.");
 
         return self::SUCCESS;
     }
