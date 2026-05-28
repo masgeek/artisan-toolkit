@@ -15,7 +15,7 @@ class MakeFullResourceCommandTest extends TestCase
     {
         parent::setUp();
         $this->resourcesPath = app_path('Http/Resources');
-        $this->collectionsPath = app_path('Http/Resources/Collections');
+        $this->collectionsPath = app_path('Http/Resources/Collection');
 
         File::deleteDirectory($this->resourcesPath);
         File::makeDirectory($this->resourcesPath, 0755, true);
@@ -85,6 +85,9 @@ class MakeFullResourceCommandTest extends TestCase
             ->assertFailed();
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function test_it_generates_fields_from_existing_model(): void
     {
         Schema::create('coverage_test_models', function ($table) {
@@ -111,6 +114,9 @@ class MakeFullResourceCommandTest extends TestCase
         $this->assertStringContainsString("'updated_at' => \$model->updated_at,", $content);
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function test_it_falls_back_to_placeholder_when_model_missing(): void
     {
         $this->artisan('make:resource-full', [
@@ -195,6 +201,9 @@ class MakeFullResourceCommandTest extends TestCase
         $this->assertFileExists($this->resourcesPath . '/SkipTagResource.php');
     }
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function test_it_falls_back_to_placeholder_when_model_table_missing(): void
     {
         eval('namespace App\Models { class FullResourceNoTableModel extends \Illuminate\Database\Eloquent\Model {
