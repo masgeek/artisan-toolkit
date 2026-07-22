@@ -36,7 +36,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer install --no-interaction
 
       - name: Run tests (no coverage)
         run: composer run test
