@@ -16,7 +16,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check for existing PR
+        id: check-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "PR #$existing already exists, skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create pull request
+        if: steps.check-pr.outputs.exists != 'true'
         uses: devops-infra/action-pull-request@v1.2.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
