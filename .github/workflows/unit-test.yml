@@ -39,10 +39,10 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Run tests (no coverage)
-        run: composer test
+        run: composer run test
 
       - name: Run tests with coverage
-        run: composer test:coverage
+        run: composer run test:coverage
 
       - name: Check coverage threshold (≥75%)
         uses: ericsizemore/phpunit-coverage-check-action@2.0.0
