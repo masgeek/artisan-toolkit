@@ -1,5 +1,14 @@
 <?php
 
+use Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand;
+use Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand;
+use Masgeek\ArtisanToolkit\Commands\MakeEnumCommand;
+use Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand;
+use Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand;
+use Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand;
+use Masgeek\ArtisanToolkit\Commands\RotateAppKey;
+use Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand;
+
 return [
 
     /*
@@ -20,7 +29,8 @@ return [
 
     'overrides' => [
 
-        'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
+        'schema:dump' => SchemaDumpCommand::class,
+        'key:generate' => RotateAppKey::class,
 
     ],
 
@@ -42,6 +52,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Encrypted Model Attributes
+    |--------------------------------------------------------------------------
+    |
+    | Map your Eloquent models to the array of fields that use Laravel's
+    | encrypted casting. The key:generate command will chunk through
+    | these models and re-encrypt the specified attributes using the new APP_KEY.
+    |
+    */
+    'encrypted_models' => [
+        // \App\Models\ApiCredential::class => [
+        //     'api_key',
+        //     'api_secret',
+        // ],
+        // \App\Models\User::class => [
+        //     'two_factor_secret',
+        // ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Commands
     |--------------------------------------------------------------------------
     |
@@ -52,13 +82,13 @@ return [
 
     'commands' => [
 
-        'make:enum' => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
-        'make:api-scaffold' => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
-        'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
-        'make:repo' => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+        'make:enum' => MakeEnumCommand::class,
+        'make:api-scaffold' => MakeApiScaffoldCommand::class,
+        'make:resource-full' => MakeFullResourceCommand::class,
+        'make:repo' => MakeRepositoryCommand::class,
 
-        'model:relations'        => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
-        'model:prune-orphaned'   => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
+        'model:relations' => ListModelRelationsCommand::class,
+        'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
     ],
 
 ];
