@@ -16,7 +16,8 @@ class RotateAppKey extends Command
 
     protected $signature = 'key:generate
                     {--show : Display the key instead of modifying files}
-                    {--force : Force the operation to run when in production}';
+                    {--force : Force the operation to run when in production}
+                    {--no-env-file : Skip writing to the .env file (useful in Docker)}';
 
     protected $description = 'Set the application key, rotate old key to APP_PREVIOUS_KEYS, and re-encrypt configured model fields';
 
@@ -35,14 +36,20 @@ class RotateAppKey extends Command
         }
 
         $envPath = app()->environmentFilePath();
-        if (! file_exists($envPath)) {
-            $this->error('.env file not found.');
+        $envWritable = ! $this->option('no-env-file')
+            && file_exists($envPath)
+            && is_writable($envPath);
 
-            return Command::FAILURE;
+        if (! $this->option('no-env-file') && ! file_exists($envPath)) {
+            $this->warn('.env file not found — skipping file update.');
+        } elseif (! $this->option('no-env-file') && ! is_writable($envPath)) {
+            $this->warn('.env file is not writable — skipping file update.');
         }
 
-        // 2. Rotate keys inside .env file
-        $this->updateEnvironmentKeys($envPath, $currentKey, $newKey);
+        if ($envWritable) {
+            $this->updateEnvironmentKeys($envPath, $currentKey, $newKey);
+            $this->info('Rotated previous APP_KEY into APP_PREVIOUS_KEYS ring.');
+        }
 
         // 3. Dynamically append current key to runtime APP_PREVIOUS_KEYS array
         $previousKeys = config('app.previous_keys', []);
@@ -56,7 +63,17 @@ class RotateAppKey extends Command
         ]);
 
         $this->info('Application key set successfully.');
-        $this->info('Rotated previous APP_KEY into APP_PREVIOUS_KEYS ring.');
+
+        if (! $envWritable) {
+            $this->newLine();
+            $this->warn('Set the following env variables before restarting:');
+            $this->line("  APP_KEY={$newKey}");
+            if (! empty($previousKeys)) {
+                $escaped = implode(',', $previousKeys);
+                $this->line("  APP_PREVIOUS_KEYS=\"{$escaped}\"");
+            }
+            $this->newLine();
+        }
 
         // 4. Process all configured models and fields
         if (! $this->reEncryptConfiguredModels()) {
