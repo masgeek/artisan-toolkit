@@ -30,8 +30,8 @@ jobs:
           fi
 
       - name: Create pull request
+        uses: devops-infra/action-pull-request@v1.4.0
         if: steps.check-pr.outputs.exists != 'true'
-        uses: devops-infra/action-pull-request@v1.2.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           title: 'Next release'
