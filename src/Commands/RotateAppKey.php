@@ -112,12 +112,16 @@ class RotateAppKey extends Command
 
         $this->info("Reversing {$steps} key rotation(s)...");
 
-        // Iterate through each key, re-encrypting data from current key back
+        // Iterate through each key, re-encrypting data from current key back.
+        // Each step: decrypt with workingKey (moved to previous_keys), re-encrypt with targetKey.
         $workingKey = $currentKey;
         foreach ($keysToRestore as $targetKey) {
             $this->info("Re-encrypting from current key back to previous key...");
 
-            config(['app.key' => $targetKey]);
+            config([
+                'app.key' => $targetKey,
+                'app.previous_keys' => array_merge([$workingKey], $remainingPrevious),
+            ]);
 
             $this->reEncryptConfiguredModels();
 
