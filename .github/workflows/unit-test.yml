@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -29,20 +29,20 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('**/composer.json') }}
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer install --no-interaction
 
       - name: Run tests (no coverage)
-        run: composer test
+        run: composer run test
 
       - name: Run tests with coverage
-        run: composer test:coverage
+        run: composer run test:coverage
 
       - name: Check coverage threshold (≥75%)
         uses: ericsizemore/phpunit-coverage-check-action@2.0.0

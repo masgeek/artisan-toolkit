@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 class MakeFullResourceCommandTest extends TestCase
 {
     private string $resourcesPath;
+
     private string $collectionsPath;
 
     protected function setUp(): void
@@ -38,13 +39,13 @@ class MakeFullResourceCommandTest extends TestCase
         $this->artisan('make:resource-full', ['name' => 'UserResource'])
             ->assertSuccessful();
 
-        $this->assertFileExists($this->resourcesPath . '/UserResource.php');
-        $this->assertFileExists($this->collectionsPath . '/UserResourceCollection.php');
+        $this->assertFileExists($this->resourcesPath.'/UserResource.php');
+        $this->assertFileExists($this->collectionsPath.'/UserResourceCollection.php');
 
-        $resourceContent = File::get($this->resourcesPath . '/UserResource.php');
+        $resourceContent = File::get($this->resourcesPath.'/UserResource.php');
         $this->assertStringContainsString('class UserResource extends \Illuminate\Http\Resources\Json\JsonResource', $resourceContent);
 
-        $collectionContent = File::get($this->collectionsPath . '/UserResourceCollection.php');
+        $collectionContent = File::get($this->collectionsPath.'/UserResourceCollection.php');
         $this->assertStringContainsString('class UserResourceCollection', $collectionContent);
     }
 
@@ -53,7 +54,7 @@ class MakeFullResourceCommandTest extends TestCase
         $this->artisan('make:resource-full', ['name' => 'UserResource'])
             ->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/UserResource.php');
+        $content = File::get($this->resourcesPath.'/UserResource.php');
         $this->assertStringContainsString('@var User', $content);
     }
 
@@ -64,14 +65,14 @@ class MakeFullResourceCommandTest extends TestCase
             '--model' => 'Admin',
         ])->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/UserResource.php');
+        $content = File::get($this->resourcesPath.'/UserResource.php');
         $this->assertStringContainsString('@var Admin', $content);
         $this->assertStringContainsString('use App\Models\Admin;', $content);
     }
 
     public function test_it_fails_when_resource_already_exists(): void
     {
-        File::put($this->resourcesPath . '/UserResource.php', '<?php');
+        File::put($this->resourcesPath.'/UserResource.php', '<?php');
 
         $this->artisan('make:resource-full', ['name' => 'UserResource'])
             ->assertFailed();
@@ -79,7 +80,7 @@ class MakeFullResourceCommandTest extends TestCase
 
     public function test_it_fails_when_collection_already_exists(): void
     {
-        File::put($this->collectionsPath . '/UserResourceCollection.php', '<?php');
+        File::put($this->collectionsPath.'/UserResourceCollection.php', '<?php');
 
         $this->artisan('make:resource-full', ['name' => 'UserResource'])
             ->assertFailed();
@@ -106,7 +107,7 @@ class MakeFullResourceCommandTest extends TestCase
             '--model' => 'CoverageTestModel',
         ])->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/CoverageResource.php');
+        $content = File::get($this->resourcesPath.'/CoverageResource.php');
         $this->assertStringContainsString("'id' => \$model->id,", $content);
         $this->assertStringContainsString("'name' => \$model->name,", $content);
         $this->assertStringContainsString("'email' => \$model->email,", $content);
@@ -124,7 +125,7 @@ class MakeFullResourceCommandTest extends TestCase
             '--model' => 'NonExistentCoverageModel',
         ])->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/MissingModelResource.php');
+        $content = File::get($this->resourcesPath.'/MissingModelResource.php');
         $this->assertStringContainsString("// 'id' => \$model->id,", $content);
         $this->assertStringContainsString("// 'name' => \$model->name,", $content);
     }
@@ -153,15 +154,15 @@ class MakeFullResourceCommandTest extends TestCase
             '--with-relationships' => true,
         ])->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/RelModelResource.php');
+        $content = File::get($this->resourcesPath.'/RelModelResource.php');
         $this->assertStringContainsString("'id' => \$model->id,", $content);
         $this->assertStringContainsString('use App\Http\Resources\RelPostResource;', $content);
         $this->assertStringContainsString('use App\Http\Resources\RelProfileResource;', $content);
         $this->assertStringContainsString('RelPostResource::collection($model->relPosts),', $content);
         $this->assertStringContainsString('new RelProfileResource($model->relProfile),', $content);
 
-        $this->assertFileExists($this->resourcesPath . '/RelPostResource.php');
-        $this->assertFileExists($this->resourcesPath . '/RelProfileResource.php');
+        $this->assertFileExists($this->resourcesPath.'/RelPostResource.php');
+        $this->assertFileExists($this->resourcesPath.'/RelProfileResource.php');
     }
 
     /**
@@ -175,7 +176,7 @@ class MakeFullResourceCommandTest extends TestCase
             $table->timestamps();
         });
 
-        File::put($this->resourcesPath . '/SkipPostResource.php', '<?php');
+        File::put($this->resourcesPath.'/SkipPostResource.php', '<?php');
 
         eval('namespace App\Models { class CoverageRelSkipModel extends \Illuminate\Database\Eloquent\Model {
             protected $table = "coverage_rel_skip_models";
@@ -195,10 +196,10 @@ class MakeFullResourceCommandTest extends TestCase
 
         $this->assertStringEqualsStringIgnoringLineEndings(
             '<?php',
-            File::get($this->resourcesPath . '/SkipPostResource.php')
+            File::get($this->resourcesPath.'/SkipPostResource.php')
         );
 
-        $this->assertFileExists($this->resourcesPath . '/SkipTagResource.php');
+        $this->assertFileExists($this->resourcesPath.'/SkipTagResource.php');
     }
 
     /**
@@ -215,7 +216,7 @@ class MakeFullResourceCommandTest extends TestCase
             '--model' => 'FullResourceNoTableModel',
         ])->assertSuccessful();
 
-        $content = File::get($this->resourcesPath . '/NoTableResource.php');
+        $content = File::get($this->resourcesPath.'/NoTableResource.php');
         $this->assertStringContainsString("// 'id' => \$model->id,", $content);
         $this->assertStringContainsString("// 'name' => \$model->name,", $content);
     }

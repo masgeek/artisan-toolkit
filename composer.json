@@ -22,6 +22,12 @@
     "php": "^8.2",
     "laravel/framework": "^11|^12|^13"
   },
+  "require-dev": {
+    "laravel/pint": "^1.29",
+    "masgeek/composer-scripts": "^0.0.2",
+    "orchestra/testbench": "^9.0|^10.0|^11.0",
+    "phpunit/phpunit": "^11.0|^12.0|^13.1.8"
+  },
   "autoload": {
     "psr-4": {
       "Masgeek\\ArtisanToolkit\\": "src/"
@@ -31,10 +37,6 @@
     "psr-4": {
       "Masgeek\\ArtisanToolkit\\Tests\\": "tests/"
     }
-  },
-  "require-dev": {
-    "orchestra/testbench": "^9.0|^10.0|^11.0",
-    "phpunit/phpunit": "^11.0|^12.0|^13.1.8"
   },
   "extra": {
     "laravel": {
@@ -52,6 +54,9 @@
   "config": {
     "optimize-autoloader": true,
     "preferred-install": "dist",
-    "sort-packages": true
+    "sort-packages": true,
+    "allow-plugins": {
+      "masgeek/composer-scripts": true
+    }
   }
 }

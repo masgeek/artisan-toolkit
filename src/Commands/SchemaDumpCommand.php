@@ -15,22 +15,18 @@ use Illuminate\Filesystem\Filesystem;
  *
  * The original --prune deletes every file under database/migrations.
  * This version only deletes files whose migration name appears in the
- * migrations table, leaving pending (unrun) migration files untouched.
+ * migration table, leaving pending (unrun) migration files untouched.
  */
 class SchemaDumpCommand extends DumpCommand
 {
     protected $signature = 'schema:dump
                 {--database= : The database connection to use}
                 {--path= : The path where the schema dump file should be stored}
-                {--prune : Delete only migration files that have already been run (pending migrations are kept)}';
+                {--prune : Delete only migration files that have already been run (pending migrations are kept)}
+                {--without-migration-data : Dump the schema without the migration data}';
 
     protected $description = 'Dump the database schema; --prune removes only already-run migration files';
 
-    /**
-     * @param ConnectionResolverInterface $connections
-     * @param Dispatcher $dispatcher
-     * @return int
-     */
     public function handle(ConnectionResolverInterface $connections, Dispatcher $dispatcher): int
     {
         if ($this->isProhibited()) {
@@ -51,7 +47,7 @@ class SchemaDumpCommand extends DumpCommand
             $info .= " and pruned ({$result['deleted']} deleted, {$result['kept']} pending kept)";
         }
 
-        $this->components->info($info . ' successfully.');
+        $this->components->info($info.' successfully.');
 
         return self::SUCCESS;
     }
@@ -71,7 +67,7 @@ class SchemaDumpCommand extends DumpCommand
 
         $ran = $connection->table($table)
             ->pluck('migration')
-            ->map(fn ($m) => $m . '.php')
+            ->map(fn ($m) => $m.'.php')
             ->flip()
             ->all();
 

@@ -49,9 +49,9 @@ class MakeEnumCommand extends Command
         $className = array_pop($parts);
         $sub = implode('\\', $parts);
 
-        $namespace = 'App\\Enums' . ($sub ? '\\' . $sub : '');
-        $relativeDir = 'app/Enums' . ($sub ? '/' . str_replace('\\', '/', $sub) : '');
-        $filePath = base_path($relativeDir . '/' . $className . '.php');
+        $namespace = 'App\\Enums'.($sub ? '\\'.$sub : '');
+        $relativeDir = 'app/Enums'.($sub ? '/'.str_replace('\\', '/', $sub) : '');
+        $filePath = base_path($relativeDir.'/'.$className.'.php');
 
         return [$namespace, $className, $filePath];
     }
@@ -88,9 +88,9 @@ class MakeEnumCommand extends Command
 
         foreach ($names as $case) {
             $lines[] = match ($backed) {
-                'string' => "    case {$case} = '" . $this->toSnakeCase($case) . "';",
-                'int'    => "    case {$case} = {$index};",
-                default  => "    case {$case};",
+                'string' => "    case {$case} = '".$this->toSnakeCase($case)."';",
+                'int' => "    case {$case} = {$index};",
+                default => "    case {$case};",
             };
             $index++;
         }

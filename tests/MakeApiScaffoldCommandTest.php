@@ -46,10 +46,10 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $this->assertFileExists($this->paths['controller'] . '/CurrencyController.php');
-        $this->assertFileExists($this->paths['repo'] . '/CurrencyRepo.php');
-        $this->assertFileExists($this->paths['resource'] . '/CurrencyResource.php');
-        $this->assertFileExists($this->paths['collection'] . '/CurrencyResourceCollection.php');
+        $this->assertFileExists($this->paths['controller'].'/CurrencyController.php');
+        $this->assertFileExists($this->paths['repo'].'/CurrencyRepo.php');
+        $this->assertFileExists($this->paths['resource'].'/CurrencyResource.php');
+        $this->assertFileExists($this->paths['collection'].'/CurrencyResourceCollection.php');
     }
 
     public function test_it_creates_scaffold_with_custom_model(): void
@@ -60,13 +60,13 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $repoContent = File::get($this->paths['repo'] . '/CurrencyRepo.php');
+        $repoContent = File::get($this->paths['repo'].'/CurrencyRepo.php');
         $this->assertStringContainsString('MyCurrency::class', $repoContent);
     }
 
     public function test_it_skipped_when_partial_files_exist(): void
     {
-        File::put($this->paths['controller'] . '/CurrencyController.php', '<?php');
+        File::put($this->paths['controller'].'/CurrencyController.php', '<?php');
 
         $this->artisan('make:api-scaffold', [
             'name' => 'Currency',
@@ -75,18 +75,18 @@ class MakeApiScaffoldCommandTest extends TestCase
 
         $this->assertStringEqualsStringIgnoringLineEndings(
             '<?php',
-            File::get($this->paths['controller'] . '/CurrencyController.php')
+            File::get($this->paths['controller'].'/CurrencyController.php')
         );
 
-        $this->assertFileExists($this->paths['repo'] . '/CurrencyRepo.php');
+        $this->assertFileExists($this->paths['repo'].'/CurrencyRepo.php');
     }
 
     public function test_it_fails_when_all_files_exist_without_force(): void
     {
-        File::put($this->paths['controller'] . '/CurrencyController.php', '<?php');
-        File::put($this->paths['repo'] . '/CurrencyRepo.php', '<?php');
-        File::put($this->paths['resource'] . '/CurrencyResource.php', '<?php');
-        File::put($this->paths['collection'] . '/CurrencyResourceCollection.php', '<?php');
+        File::put($this->paths['controller'].'/CurrencyController.php', '<?php');
+        File::put($this->paths['repo'].'/CurrencyRepo.php', '<?php');
+        File::put($this->paths['resource'].'/CurrencyResource.php', '<?php');
+        File::put($this->paths['collection'].'/CurrencyResourceCollection.php', '<?php');
 
         $this->artisan('make:api-scaffold', [
             'name' => 'Currency',
@@ -96,10 +96,10 @@ class MakeApiScaffoldCommandTest extends TestCase
 
     public function test_it_forces_overwrite(): void
     {
-        File::put($this->paths['controller'] . '/CurrencyController.php', '<?php // old');
-        File::put($this->paths['repo'] . '/CurrencyRepo.php', '<?php // old');
-        File::put($this->paths['resource'] . '/CurrencyResource.php', '<?php // old');
-        File::put($this->paths['collection'] . '/CurrencyResourceCollection.php', '<?php // old');
+        File::put($this->paths['controller'].'/CurrencyController.php', '<?php // old');
+        File::put($this->paths['repo'].'/CurrencyRepo.php', '<?php // old');
+        File::put($this->paths['resource'].'/CurrencyResource.php', '<?php // old');
+        File::put($this->paths['collection'].'/CurrencyResourceCollection.php', '<?php // old');
 
         $this->artisan('make:api-scaffold', [
             'name' => 'Currency',
@@ -107,7 +107,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $content = File::get($this->paths['controller'] . '/CurrencyController.php');
+        $content = File::get($this->paths['controller'].'/CurrencyController.php');
         $this->assertStringContainsString('namespace App\Http\Controllers\Api', $content);
     }
 
@@ -118,7 +118,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $this->assertFileExists($this->paths['controller'] . '/Admin/CurrencyController.php');
+        $this->assertFileExists($this->paths['controller'].'/Admin/CurrencyController.php');
     }
 
     public function test_it_registers_route_with_default_prefix(): void
@@ -130,8 +130,8 @@ class MakeApiScaffoldCommandTest extends TestCase
             ->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertStringContainsString("v1/currencies", $routesContent);
-        $this->assertStringContainsString("CurrencyController::class", $routesContent);
+        $this->assertStringContainsString('v1/currencies', $routesContent);
+        $this->assertStringContainsString('CurrencyController::class', $routesContent);
     }
 
     public function test_it_registers_route_with_custom_prefix(): void
@@ -145,7 +145,7 @@ class MakeApiScaffoldCommandTest extends TestCase
         ])->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertStringContainsString("v1/my-currencies", $routesContent);
+        $this->assertStringContainsString('v1/my-currencies', $routesContent);
     }
 
     public function test_it_skips_duplicate_route_prefix(): void
@@ -162,7 +162,7 @@ class MakeApiScaffoldCommandTest extends TestCase
         ])->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertEquals(1, substr_count($routesContent, "v1/currencies"));
+        $this->assertEquals(1, substr_count($routesContent, 'v1/currencies'));
     }
 
     public function test_it_warns_on_missing_route_anchor(): void
@@ -174,7 +174,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             ->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertStringNotContainsString("v1/currencies", $routesContent);
+        $this->assertStringNotContainsString('v1/currencies', $routesContent);
     }
 
     public function test_it_generates_resource_stub_with_placeholder_fields(): void
@@ -184,7 +184,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $resourceContent = File::get($this->paths['resource'] . '/CurrencyResource.php');
+        $resourceContent = File::get($this->paths['resource'].'/CurrencyResource.php');
         $this->assertStringContainsString("// 'id' => \$this->id,", $resourceContent);
         $this->assertStringContainsString('class CurrencyResource extends BaseJsonResource', $resourceContent);
     }
@@ -197,7 +197,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $repoContent = File::get($this->paths['repo'] . '/CurrencyRepo.php');
+        $repoContent = File::get($this->paths['repo'].'/CurrencyRepo.php');
         $this->assertStringContainsString('class CurrencyRepo extends BaseRepo', $repoContent);
         $this->assertStringContainsString('return Currency::class;', $repoContent);
         $this->assertStringContainsString('@extends BaseRepo<Currency>', $repoContent);
@@ -210,7 +210,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $collectionContent = File::get($this->paths['collection'] . '/CurrencyResourceCollection.php');
+        $collectionContent = File::get($this->paths['collection'].'/CurrencyResourceCollection.php');
         $this->assertStringContainsString('CurrencyResource::collection($this->collection)', $collectionContent);
         $this->assertStringContainsString('class CurrencyResourceCollection extends ResourceCollection', $collectionContent);
     }
@@ -222,7 +222,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $controllerContent = File::get($this->paths['controller'] . '/CurrencyController.php');
+        $controllerContent = File::get($this->paths['controller'].'/CurrencyController.php');
         $this->assertStringContainsString('class CurrencyController extends Controller', $controllerContent);
         $this->assertStringContainsString('CurrencyRepo $currencyRepo', $controllerContent);
         $this->assertStringContainsString('CurrencyResourceCollection', $controllerContent);
@@ -247,7 +247,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $resourceContent = File::get($this->paths['resource'] . '/ScaffoldItemResource.php');
+        $resourceContent = File::get($this->paths['resource'].'/ScaffoldItemResource.php');
         $this->assertStringContainsString("'id' => \$this->id,", $resourceContent);
         $this->assertStringContainsString("'title' => \$this->title,", $resourceContent);
         $this->assertStringContainsString("'description' => \$this->description,", $resourceContent);
@@ -267,7 +267,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             '--no-route' => true,
         ])->assertSuccessful();
 
-        $resourceContent = File::get($this->paths['resource'] . '/NoTableItemResource.php');
+        $resourceContent = File::get($this->paths['resource'].'/NoTableItemResource.php');
         $this->assertStringContainsString("// 'id' => \$this->id,", $resourceContent);
     }
 }

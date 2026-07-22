@@ -27,9 +27,9 @@ class MakeRepositoryCommandTest extends TestCase
         $this->artisan('make:repo', ['name' => 'UserRepo'])
             ->assertSuccessful();
 
-        $this->assertFileExists($this->repositoriesPath . '/UserRepo.php');
+        $this->assertFileExists($this->repositoriesPath.'/UserRepo.php');
 
-        $content = File::get($this->repositoriesPath . '/UserRepo.php');
+        $content = File::get($this->repositoriesPath.'/UserRepo.php');
         $this->assertStringContainsString('namespace App\Repositories;', $content);
         $this->assertStringContainsString('class UserRepo extends \App\Repositories\BaseRepository', $content);
     }
@@ -41,14 +41,14 @@ class MakeRepositoryCommandTest extends TestCase
             '--model' => 'Post',
         ])->assertSuccessful();
 
-        $content = File::get($this->repositoriesPath . '/PostRepo.php');
+        $content = File::get($this->repositoriesPath.'/PostRepo.php');
         $this->assertStringContainsString('use \App\Models\Post;', $content);
         $this->assertStringContainsString('Post $model', $content);
     }
 
     public function test_it_fails_when_repository_already_exists(): void
     {
-        File::put($this->repositoriesPath . '/UserRepo.php', '<?php');
+        File::put($this->repositoriesPath.'/UserRepo.php', '<?php');
 
         $this->artisan('make:repo', ['name' => 'UserRepo'])
             ->assertFailed();
@@ -59,7 +59,7 @@ class MakeRepositoryCommandTest extends TestCase
         $this->artisan('make:repo', ['name' => 'CustomerRepo'])
             ->assertSuccessful();
 
-        $content = File::get($this->repositoriesPath . '/CustomerRepo.php');
+        $content = File::get($this->repositoriesPath.'/CustomerRepo.php');
         $this->assertStringNotContainsString('use App\Models', $content);
         $this->assertStringContainsString('model', $content);
     }
