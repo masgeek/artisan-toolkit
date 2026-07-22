@@ -35,6 +35,14 @@ class RotateAppKey extends Command
             return Command::SUCCESS;
         }
 
+        // Fail early if no models are configured for re-encryption
+        $modelsToProcess = config('artisan-toolkit.encrypted_models', []);
+        if (empty($modelsToProcess)) {
+            $this->error('No models configured for re-encryption in config/artisan-toolkit.php.');
+
+            return Command::FAILURE;
+        }
+
         $envPath = app()->environmentFilePath();
         $envWritable = ! $this->option('no-env-file')
             && file_exists($envPath)
