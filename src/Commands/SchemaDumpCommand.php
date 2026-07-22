@@ -15,14 +15,15 @@ use Illuminate\Filesystem\Filesystem;
  *
  * The original --prune deletes every file under database/migrations.
  * This version only deletes files whose migration name appears in the
- * migrations table, leaving pending (unrun) migration files untouched.
+ * migration table, leaving pending (unrun) migration files untouched.
  */
 class SchemaDumpCommand extends DumpCommand
 {
     protected $signature = 'schema:dump
                 {--database= : The database connection to use}
                 {--path= : The path where the schema dump file should be stored}
-                {--prune : Delete only migration files that have already been run (pending migrations are kept)}';
+                {--prune : Delete only migration files that have already been run (pending migrations are kept)}
+                {--without-migration-data : Dump the schema without the migration data}';
 
     protected $description = 'Dump the database schema; --prune removes only already-run migration files';
 
