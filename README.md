@@ -100,9 +100,30 @@ php artisan key:generate --show
 
 # Force in production
 php artisan key:generate --force
+
+# Skip .env file writes (Docker / readonly filesystem)
+php artisan key:generate --no-env-file
+
+# Reverse the last key rotation
+php artisan key:generate --reverse
+
+# Reverse the last 3 key rotations
+php artisan key:generate --reverse --steps=3
 ```
 
-The command **fails** if no models are defined in `encrypted_models` or none of the configured models are valid. This prevents accidental key rotation without re-encrypting sensitive data.
+| Option | Description |
+|---|---|
+| `--show` | Print the generated key without applying changes |
+| `--force` | Allow running in production |
+| `--no-env-file` | Skip `.env` writes; prints the new key and previous keys for manual injection |
+| `--reverse` | Roll back key rotations using previous keys |
+| `--steps=N` | Number of rotations to roll back (default: `1`, used with `--reverse`) |
+
+The command **fails early** if no models are defined in `encrypted_models` or none of the configured models are valid. This prevents accidental key rotation without re-encrypting sensitive data.
+
+When `--no-env-file` is used, the command outputs the `APP_KEY` and `APP_PREVIOUS_KEYS` values so they can be injected as environment variables (e.g. in Docker).
+
+`--reverse` iterates through `N` previous keys, re-encrypting data back to each one in sequence, then sets the restored key as `APP_KEY`. It fails if fewer previous keys exist than the requested `--steps`.
 
 #### `encrypted_models`
 
