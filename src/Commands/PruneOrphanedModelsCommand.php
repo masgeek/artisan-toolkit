@@ -3,6 +3,7 @@
 namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Finder\Finder;
@@ -52,7 +53,7 @@ class PruneOrphanedModelsCommand extends Command
                 }
 
                 $hasTable = $this->hasBackingTable($class);
-                $refs     = $this->findReferences($class, $file->getRealPath(), $searchPath);
+                $refs = $this->findReferences($class, $file->getRealPath(), $searchPath);
 
                 if ($this->output->isVerbose()) {
                     $this->printVerboseRow($class, $hasTable, $refs);
@@ -146,7 +147,7 @@ class PruneOrphanedModelsCommand extends Command
 
     private function modelFiles(string $path): Finder
     {
-        return (new Finder())->in($path)->name('*.php')->files();
+        return (new Finder)->in($path)->name('*.php')->files();
     }
 
     private function resolveClass(\SplFileInfo $file): ?string
@@ -171,7 +172,7 @@ class PruneOrphanedModelsCommand extends Command
             return null;
         }
 
-        if (! is_subclass_of($fqcn, \Illuminate\Database\Eloquent\Model::class)) {
+        if (! is_subclass_of($fqcn, Model::class)) {
             return null;
         }
 
@@ -181,7 +182,7 @@ class PruneOrphanedModelsCommand extends Command
     private function hasBackingTable(string $class): bool
     {
         try {
-            return Schema::hasTable((new $class())->getTable());
+            return Schema::hasTable((new $class)->getTable());
         } catch (\Throwable) {
             return false;
         }
@@ -195,9 +196,9 @@ class PruneOrphanedModelsCommand extends Command
         }
 
         $shortName = class_basename($class);
-        $refs      = [];
+        $refs = [];
 
-        foreach ((new Finder())->in($searchPath)->name('*.php')->files() as $file) {
+        foreach ((new Finder)->in($searchPath)->name('*.php')->files() as $file) {
             if ($file->getRealPath() === $modelPath) {
                 continue;
             }

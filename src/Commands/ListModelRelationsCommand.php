@@ -4,7 +4,6 @@ namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Support\Facades\Log;
 
 class ListModelRelationsCommand extends Command
 {
@@ -31,7 +30,7 @@ class ListModelRelationsCommand extends Command
     {
         $modelClass = $this->argument('model');
 
-        if (!class_exists($modelClass)) {
+        if (! class_exists($modelClass)) {
             $this->error("Class {$modelClass} does not exist.");
 
             return Command::FAILURE;
@@ -46,7 +45,7 @@ class ListModelRelationsCommand extends Command
             $baseModelClass = $this->getBaseModelClass($modelClass);
         }
 
-        if (!class_exists($baseModelClass)) {
+        if (! class_exists($baseModelClass)) {
             $this->warn("Base model {$baseModelClass} does not exist.");
             $baseModelClass = null;
         }
@@ -62,7 +61,7 @@ class ListModelRelationsCommand extends Command
         } else {
             // Output relationships as a PHP array
             $this->info("Relationships in {$modelClass} (including base model):");
-            $this->line('[' . ' "' . implode('", "', $relations) . '" ]');
+            $this->line('['.' "'.implode('", "', $relations).'" ]');
         }
 
         return Command::SUCCESS;

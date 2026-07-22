@@ -8,14 +8,14 @@ class ArtisanToolkitServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/artisan-toolkit.php', 'artisan-toolkit');
+        $this->mergeConfigFrom(__DIR__.'/../config/artisan-toolkit.php', 'artisan-toolkit');
     }
 
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/artisan-toolkit.php' => config_path('artisan-toolkit.php'),
+                __DIR__.'/../config/artisan-toolkit.php' => config_path('artisan-toolkit.php'),
             ], 'artisan-toolkit-config');
 
             $this->registerCommands();

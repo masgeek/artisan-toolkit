@@ -26,11 +26,6 @@ class SchemaDumpCommand extends DumpCommand
 
     protected $description = 'Dump the database schema; --prune removes only already-run migration files';
 
-    /**
-     * @param ConnectionResolverInterface $connections
-     * @param Dispatcher $dispatcher
-     * @return int
-     */
     public function handle(ConnectionResolverInterface $connections, Dispatcher $dispatcher): int
     {
         if ($this->isProhibited()) {
@@ -51,7 +46,7 @@ class SchemaDumpCommand extends DumpCommand
             $info .= " and pruned ({$result['deleted']} deleted, {$result['kept']} pending kept)";
         }
 
-        $this->components->info($info . ' successfully.');
+        $this->components->info($info.' successfully.');
 
         return self::SUCCESS;
     }
@@ -71,7 +66,7 @@ class SchemaDumpCommand extends DumpCommand
 
         $ran = $connection->table($table)
             ->pluck('migration')
-            ->map(fn ($m) => $m . '.php')
+            ->map(fn ($m) => $m.'.php')
             ->flip()
             ->all();
 

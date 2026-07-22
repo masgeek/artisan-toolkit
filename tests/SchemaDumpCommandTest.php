@@ -2,11 +2,10 @@
 
 namespace Masgeek\ArtisanToolkit\Tests;
 
-use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand;
 
 class SchemaDumpCommandTest extends TestCase
 {
@@ -50,8 +49,8 @@ class SchemaDumpCommandTest extends TestCase
         $this->artisan('schema:dump')
             ->assertSuccessful();
 
-        $this->assertFileExists($this->migrationsPath . '/2024_01_01_000001_create_users_table.php');
-        $this->assertFileExists($this->migrationsPath . '/2024_01_02_000002_create_posts_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_01_000001_create_users_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_02_000002_create_posts_table.php');
     }
 
     public function test_prune_deletes_only_ran_migrations(): void
@@ -67,8 +66,8 @@ class SchemaDumpCommandTest extends TestCase
         $this->artisan('schema:dump', ['--prune' => true])
             ->assertSuccessful();
 
-        $this->assertFileDoesNotExist($this->migrationsPath . '/2024_01_01_000001_create_users_table.php');
-        $this->assertFileExists($this->migrationsPath . '/2024_01_02_000002_create_posts_table.php');
+        $this->assertFileDoesNotExist($this->migrationsPath.'/2024_01_01_000001_create_users_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_02_000002_create_posts_table.php');
     }
 
     public function test_prune_keeps_all_pending_migrations(): void
@@ -79,8 +78,8 @@ class SchemaDumpCommandTest extends TestCase
         $this->artisan('schema:dump', ['--prune' => true])
             ->assertSuccessful();
 
-        $this->assertFileExists($this->migrationsPath . '/2024_01_01_000001_create_users_table.php');
-        $this->assertFileExists($this->migrationsPath . '/2024_01_02_000002_create_posts_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_01_000001_create_users_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_02_000002_create_posts_table.php');
     }
 
     public function test_prune_mixed_ran_and_pending(): void
@@ -102,9 +101,9 @@ class SchemaDumpCommandTest extends TestCase
         $this->artisan('schema:dump', ['--prune' => true])
             ->assertSuccessful();
 
-        $this->assertFileDoesNotExist($this->migrationsPath . '/2024_01_01_000001_create_users_table.php');
-        $this->assertFileExists($this->migrationsPath . '/2024_01_02_000002_create_posts_table.php');
-        $this->assertFileDoesNotExist($this->migrationsPath . '/2024_01_03_000003_create_comments_table.php');
+        $this->assertFileDoesNotExist($this->migrationsPath.'/2024_01_01_000001_create_users_table.php');
+        $this->assertFileExists($this->migrationsPath.'/2024_01_02_000002_create_posts_table.php');
+        $this->assertFileDoesNotExist($this->migrationsPath.'/2024_01_03_000003_create_comments_table.php');
     }
 
     public function test_it_respects_array_migrations_config(): void
@@ -121,12 +120,12 @@ class SchemaDumpCommandTest extends TestCase
         $this->artisan('schema:dump', ['--prune' => true])
             ->assertSuccessful();
 
-        $this->assertFileDoesNotExist($this->migrationsPath . '/2024_01_01_000001_create_users_table.php');
+        $this->assertFileDoesNotExist($this->migrationsPath.'/2024_01_01_000001_create_users_table.php');
     }
 
     public function test_it_is_prohibited_from_running(): void
     {
-        \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::prohibit();
+        SchemaDumpCommand::prohibit();
 
         $this->artisan('schema:dump')
             ->assertFailed();
@@ -134,6 +133,6 @@ class SchemaDumpCommandTest extends TestCase
 
     private function createMigrationFile(string $filename): void
     {
-        File::put($this->migrationsPath . '/' . $filename, '<?php');
+        File::put($this->migrationsPath.'/'.$filename, '<?php');
     }
 }

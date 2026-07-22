@@ -21,12 +21,23 @@ The published `config/artisan-toolkit.php` controls which commands are active an
 ```php
 return [
     'overrides' => [
-        'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
+        'schema:dump'  => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
+        'key:generate' => \Masgeek\ArtisanToolkit\Commands\RotateAppKey::class,
     ],
 
     'model_scan_paths' => [
         'app/Models',
         'app/Models/Base',
+    ],
+
+    'encrypted_models' => [
+        // \App\Models\ApiCredential::class => [
+        //     'api_key',
+        //     'api_secret',
+        // ],
+        // \App\Models\User::class => [
+        //     'two_factor_secret',
+        // ],
     ],
 
     'commands' => [
@@ -75,6 +86,41 @@ Output when `--prune` is used:
 2026_05_07_085600_rename_playground_role.php .......... kept (pending)
 Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 ```
+
+### `key:generate`
+
+Overrides the native `key:generate` command to rotate the application key. The old `APP_KEY` is appended to `APP_PREVIOUS_KEYS` in `.env`, a new key is generated, and all configured encrypted model attributes are re-encrypted with the new key.
+
+```bash
+# Generate a new key, rotate old key, and re-encrypt configured models
+php artisan key:generate
+
+# Display the new key without applying it
+php artisan key:generate --show
+
+# Force in production
+php artisan key:generate --force
+```
+
+The command **fails** if no models are defined in `encrypted_models` or none of the configured models are valid. This prevents accidental key rotation without re-encrypting sensitive data.
+
+#### `encrypted_models`
+
+Map your Eloquent models to the array of attributes that use Laravel's `encrypted` cast. The `key:generate` command iterates these models, chunking through records and re-encrypting each listed field with the new `APP_KEY`.
+
+```php
+'encrypted_models' => [
+    \App\Models\ApiCredential::class => [
+        'api_key',
+        'api_secret',
+    ],
+    \App\Models\User::class => [
+        'two_factor_secret',
+    ],
+],
+```
+
+Each entry's value must be a non-empty array of attribute names. Models that don't exist or have no fields defined are skipped with a warning; if all models are skipped the command exits with a failure.
 
 ## Available commands
 

@@ -27,9 +27,9 @@ class MakeEnumCommandTest extends TestCase
         $this->artisan('make:enum', ['name' => 'UserRole'])
             ->assertSuccessful();
 
-        $this->assertFileExists($this->enumsPath . '/UserRole.php');
+        $this->assertFileExists($this->enumsPath.'/UserRole.php');
 
-        $content = File::get($this->enumsPath . '/UserRole.php');
+        $content = File::get($this->enumsPath.'/UserRole.php');
         $this->assertStringContainsString('namespace App\Enums;', $content);
         $this->assertStringContainsString('enum UserRole', $content);
         $this->assertStringContainsString('//', $content);
@@ -42,7 +42,7 @@ class MakeEnumCommandTest extends TestCase
             '--backed' => 'string',
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/Status.php');
+        $content = File::get($this->enumsPath.'/Status.php');
         $this->assertStringContainsString('enum Status: string', $content);
     }
 
@@ -53,7 +53,7 @@ class MakeEnumCommandTest extends TestCase
             '--backed' => 'int',
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/Priority.php');
+        $content = File::get($this->enumsPath.'/Priority.php');
         $this->assertStringContainsString('enum Priority: int', $content);
     }
 
@@ -64,7 +64,7 @@ class MakeEnumCommandTest extends TestCase
             '--cases' => 'Admin,Editor,Viewer',
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/UserRole.php');
+        $content = File::get($this->enumsPath.'/UserRole.php');
         $this->assertStringContainsString('case Admin;', $content);
         $this->assertStringContainsString('case Editor;', $content);
         $this->assertStringContainsString('case Viewer;', $content);
@@ -78,7 +78,7 @@ class MakeEnumCommandTest extends TestCase
             '--cases' => 'Pending,InProgress,Completed',
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/Status.php');
+        $content = File::get($this->enumsPath.'/Status.php');
         $this->assertStringContainsString("case Pending = 'pending';", $content);
         $this->assertStringContainsString("case InProgress = 'in_progress';", $content);
         $this->assertStringContainsString("case Completed = 'completed';", $content);
@@ -92,7 +92,7 @@ class MakeEnumCommandTest extends TestCase
             '--cases' => 'Low,Medium,High',
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/Priority.php');
+        $content = File::get($this->enumsPath.'/Priority.php');
         $this->assertStringContainsString('case Low = 1;', $content);
         $this->assertStringContainsString('case Medium = 2;', $content);
         $this->assertStringContainsString('case High = 3;', $content);
@@ -103,16 +103,16 @@ class MakeEnumCommandTest extends TestCase
         $this->artisan('make:enum', ['name' => 'Auth/UserRole'])
             ->assertSuccessful();
 
-        $this->assertFileExists($this->enumsPath . '/Auth/UserRole.php');
+        $this->assertFileExists($this->enumsPath.'/Auth/UserRole.php');
 
-        $content = File::get($this->enumsPath . '/Auth/UserRole.php');
+        $content = File::get($this->enumsPath.'/Auth/UserRole.php');
         $this->assertStringContainsString('namespace App\Enums\Auth;', $content);
         $this->assertStringContainsString('enum UserRole', $content);
     }
 
     public function test_it_fails_when_enum_already_exists(): void
     {
-        File::put($this->enumsPath . '/UserRole.php', '<?php');
+        File::put($this->enumsPath.'/UserRole.php', '<?php');
 
         $this->artisan('make:enum', ['name' => 'UserRole'])
             ->assertFailed();
@@ -120,14 +120,14 @@ class MakeEnumCommandTest extends TestCase
 
     public function test_it_forces_overwrite_when_flag_given(): void
     {
-        File::put($this->enumsPath . '/UserRole.php', '<?php // old');
+        File::put($this->enumsPath.'/UserRole.php', '<?php // old');
 
         $this->artisan('make:enum', [
             'name' => 'UserRole',
             '--force' => true,
         ])->assertSuccessful();
 
-        $content = File::get($this->enumsPath . '/UserRole.php');
+        $content = File::get($this->enumsPath.'/UserRole.php');
         $this->assertStringContainsString('enum UserRole', $content);
     }
 

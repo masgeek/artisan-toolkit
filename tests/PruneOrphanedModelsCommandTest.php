@@ -18,7 +18,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
     {
         parent::setUp();
         $this->modelsPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'test-models-'.uniqid();
-        $this->basePath   = sys_get_temp_dir().DIRECTORY_SEPARATOR.'test-base-'.uniqid();
+        $this->basePath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'test-base-'.uniqid();
         $this->searchPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'test-app-'.uniqid();
         mkdir($this->modelsPath, 0755, true);
         mkdir($this->basePath, 0755, true);
@@ -43,7 +43,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
     public function test_it_warns_and_skips_individual_missing_path(): void
     {
         $this->artisan('model:prune-orphaned', [
-            '--path'   => ['/nonexistent/path', $this->modelsPath],
+            '--path' => ['/nonexistent/path', $this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain('Skipping missing directory');
@@ -52,7 +52,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
     public function test_it_reports_no_orphans_when_directories_are_empty(): void
     {
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful();
     }
@@ -63,7 +63,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         $this->writeModelFile($this->modelsPath, $className);
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain($className);
@@ -77,7 +77,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         $this->writeModelFile($this->basePath, $classB, 'App\\Models\\Base');
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath, $this->basePath],
+            '--path' => [$this->modelsPath, $this->basePath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain($classA)
@@ -108,7 +108,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         });
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain('No orphaned models found');
@@ -127,7 +127,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         );
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain('No orphaned models found');
@@ -139,10 +139,10 @@ class PruneOrphanedModelsCommandTest extends TestCase
         $filePath = $this->writeModelFile($this->modelsPath, $className);
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
             '--delete' => true,
-            '--force'  => true,
+            '--force' => true,
         ])->assertSuccessful();
 
         $this->assertFileDoesNotExist($filePath);
@@ -156,7 +156,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         );
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful()
             ->expectsOutputToContain('No orphaned models found');
@@ -168,7 +168,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
         $filePath = $this->writeModelFile($this->modelsPath, $className);
 
         $this->artisan('model:prune-orphaned', [
-            '--path'   => [$this->modelsPath],
+            '--path' => [$this->modelsPath],
             '--search' => $this->searchPath,
         ])->assertSuccessful();
 
@@ -188,8 +188,8 @@ class PruneOrphanedModelsCommandTest extends TestCase
         );
 
         $this->artisan('model:prune-orphaned', [
-            '--path'    => [$this->modelsPath],
-            '--search'  => $this->searchPath,
+            '--path' => [$this->modelsPath],
+            '--search' => $this->searchPath,
             '--verbose' => true,
         ])->assertSuccessful()
             ->expectsOutputToContain('missing')
