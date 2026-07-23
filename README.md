@@ -40,6 +40,8 @@ return [
         // ],
     ],
 
+    'key_storage_path' => null,
+
     'commands' => [
         'make:enum'            => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
         'make:repo'            => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
@@ -91,6 +93,8 @@ Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 
 Overrides the native `key:generate` command to rotate the application key. The old `APP_KEY` is appended to `APP_PREVIOUS_KEYS` in `.env`, a new key is generated, and all configured encrypted model attributes are re-encrypted with the new key.
 
+The command prompts for confirmation before proceeding. Use `--force` to skip the prompt (e.g. in scripts or CI).
+
 ```bash
 # Generate a new key, rotate old key, and re-encrypt configured models
 php artisan key:generate
@@ -114,7 +118,7 @@ php artisan key:generate --reverse --steps=3
 | Option | Description |
 |---|---|
 | `--show` | Print the generated key without applying changes |
-| `--force` | Allow running in production |
+| `--force` | Skip confirmation prompts; allow running in production |
 | `--no-env-file` | Skip `.env` writes; prints the new key and previous keys for manual injection |
 | `--reverse` | Roll back key rotations using previous keys |
 | `--steps=N` | Number of rotations to roll back (default: `1`, used with `--reverse`) |
@@ -122,6 +126,8 @@ php artisan key:generate --reverse --steps=3
 The command **fails early** if no models are defined in `encrypted_models` or none of the configured models are valid. This prevents accidental key rotation without re-encrypting sensitive data.
 
 When `--no-env-file` is used, the command outputs the `APP_KEY` and `APP_PREVIOUS_KEYS` values so they can be injected as environment variables (e.g. in Docker).
+
+If `key_storage_path` is configured, the command also writes the keys to a JSON file after each rotation (see [`key_storage_path`](#key_storage_path) below).
 
 `--reverse` iterates through `N` previous keys, re-encrypting data back to each one in sequence, then sets the restored key as `APP_KEY`. It fails if fewer previous keys exist than the requested `--steps`.
 
@@ -142,6 +148,35 @@ Map your Eloquent models to the array of attributes that use Laravel's `encrypte
 ```
 
 Each entry's value must be a non-empty array of attribute names. Models that don't exist or have no fields defined are skipped with a warning; if all models are skipped the command exits with a failure.
+
+### `key_storage_path`
+
+Absolute path to a JSON file where the current `APP_KEY` and all previous keys are persisted after each key rotation. This is useful in Docker environments where other containers (sidecars, backup services) need to read the latest keys without accessing `.env`.
+
+```php
+'key_storage_path' => env('KEY_STORAGE_PATH', storage_path('app/keys/app-keys.json')), // default
+```
+
+Override via `.env`:
+
+```dotenv
+KEY_STORAGE_PATH=/run/secrets/app-keys.json  # Docker secret mount
+KEY_STORAGE_PATH=null                        # disable key file
+```
+
+When set to a non-null path, each `key:generate` run (forward or reverse) writes a JSON file with this structure:
+
+```json
+{
+    "current_key": "base64:...",
+    "previous_keys": ["base64:...", "base64:..."],
+    "updated_at": "2026-07-23T12:00:00+00:00"
+}
+```
+
+The parent directory is created automatically if it does not exist. Set to `null` (default) to disable.
+
+> **Security warning:** This file contains your encryption keys in plain text. Ensure the file has restrictive permissions (e.g. `chmod 600`), the parent directory is not world-readable, and the file is never committed to version control. When using Docker, mount the path as a `tmpfs` volume or use Docker secrets to avoid persisting keys to disk.
 
 ## Available commands
 

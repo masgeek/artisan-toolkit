@@ -72,6 +72,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Key Storage Path
+    |--------------------------------------------------------------------------
+    |
+    | Absolute path to a JSON file where the current APP_KEY and all previous
+    | keys are persisted after each rotation. Useful in Docker containers:
+    | mount a volume to this path so other containers (e.g. a sidecar or
+    | backup sidecar) can read the latest keys without touching .env.
+    |
+    | Set to null to disable (default). When disabled, keys are only stored
+    | in .env and the runtime config.
+    |
+    | WARNING: This file contains sensitive encryption keys in plain text.
+    | Ensure the file has restrictive permissions (e.g. 0600) and the
+    | parent directory is not world-readable. Never commit this file to
+    | version control.
+    |
+    | Example:
+    |   KEY_STORAGE_PATH=/run/secrets/app-keys.json
+    |   KEY_STORAGE_PATH=null
+    |
+    */
+
+    'key_storage_path' => env('KEY_STORAGE_PATH', storage_path('app/keys/app-keys.json')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Commands
     |--------------------------------------------------------------------------
     |

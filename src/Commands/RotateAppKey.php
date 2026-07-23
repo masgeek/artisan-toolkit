@@ -44,7 +44,58 @@ class RotateAppKey extends Command
             return $this->reverse($currentKey);
         }
 
+        if (! $this->confirmRotation($currentKey)) {
+            return Command::SUCCESS;
+        }
+
         return $this->rotate($currentKey, $cipher);
+    }
+
+    /**
+     * Prompt the user to confirm the forward key rotation.
+     */
+    private function confirmRotation(string $currentKey): bool
+    {
+        if ($this->option('force')) {
+            return true;
+        }
+
+        $this->newLine();
+        $this->warn('This will:');
+        $this->line('  1. Generate a new application key');
+        $this->line('  2. Move the current key into APP_PREVIOUS_KEYS');
+        $this->line('  3. Re-encrypt all configured model fields with the new key');
+
+        if (config('artisan-toolkit.key_storage_path')) {
+            $this->line('  4. Write keys to '.config('artisan-toolkit.key_storage_path'));
+        }
+
+        $this->newLine();
+
+        return $this->confirm('Do you want to proceed with key rotation?', false);
+    }
+
+    /**
+     * Prompt the user to confirm the reverse key rotation.
+     */
+    private function confirmReverse(int $steps, int $available): bool
+    {
+        if ($this->option('force')) {
+            return true;
+        }
+
+        $this->newLine();
+        $this->warn("This will reverse {$steps} key rotation(s) out of {$available} available.");
+        $this->line('  1. Re-encrypt all configured model fields back to previous key(s)');
+        $this->line('  2. Restore the oldest rolled-back key as APP_KEY');
+
+        if (config('artisan-toolkit.key_storage_path')) {
+            $this->line('  3. Write keys to '.config('artisan-toolkit.key_storage_path'));
+        }
+
+        $this->newLine();
+
+        return $this->confirm('Do you want to proceed with key reversal?', false);
     }
 
     /**
@@ -83,6 +134,8 @@ class RotateAppKey extends Command
             return Command::FAILURE;
         }
 
+        $this->writeKeyFile($newKey, $previousKeys);
+
         return Command::SUCCESS;
     }
 
@@ -106,6 +159,10 @@ class RotateAppKey extends Command
             return Command::FAILURE;
         }
 
+        if (! $this->confirmReverse($steps, count($previousKeys))) {
+            return Command::SUCCESS;
+        }
+
         // Pop the N keys to restore (from front of array = most recent)
         $keysToRestore = array_slice($previousKeys, 0, $steps);
         $remainingPrevious = array_slice($previousKeys, $steps);
@@ -116,7 +173,7 @@ class RotateAppKey extends Command
         // Each step: decrypt with workingKey (moved to previous_keys), re-encrypt with targetKey.
         $workingKey = $currentKey;
         foreach ($keysToRestore as $targetKey) {
-            $this->info("Re-encrypting from current key back to previous key...");
+            $this->info('Re-encrypting from current key back to previous key...');
 
             config([
                 'app.key' => $targetKey,
@@ -148,6 +205,8 @@ class RotateAppKey extends Command
         if (! $envWritable) {
             $this->printEnvInstructions($workingKey, $newPreviousKeys);
         }
+
+        $this->writeKeyFile($workingKey, $newPreviousKeys);
 
         return Command::SUCCESS;
     }
@@ -249,6 +308,34 @@ class RotateAppKey extends Command
             $this->line("  APP_PREVIOUS_KEYS=\"{$escaped}\"");
         }
         $this->newLine();
+    }
+
+    /**
+     * Write current and previous keys to a JSON file for Docker volume mounting.
+     */
+    private function writeKeyFile(string $currentKey, array $previousKeys): void
+    {
+        $keyStoragePath = config('artisan-toolkit.key_storage_path');
+
+        if ($keyStoragePath === null || $keyStoragePath === '') {
+            return;
+        }
+
+        $data = [
+            'current_key' => $currentKey,
+            'previous_keys' => array_values($previousKeys),
+            'updated_at' => now()->toIso8601String(),
+        ];
+
+        $directory = dirname($keyStoragePath);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0700, true);
+        }
+
+        file_put_contents($keyStoragePath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        $this->info("Keys written to {$keyStoragePath}");
     }
 
     /**
