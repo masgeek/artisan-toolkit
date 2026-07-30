@@ -12,6 +12,7 @@ class RotateAppKey extends Command
     protected $name = 'key:generate';
 
     protected $signature = 'key:generate
+                    {--new : New application setup — skip rotation, re-encryption, and model checks}
                     {--show : Display the key instead of modifying files}
                     {--force : Force the operation to run when in production}
                     {--no-env-file : Skip writing to the .env file (useful in Docker)}
@@ -30,6 +31,10 @@ class RotateAppKey extends Command
             $this->line('<comment>'.base64_encode(Encrypter::generateKey($cipher)).'</comment>');
 
             return Command::SUCCESS;
+        }
+
+        if ($this->option('new')) {
+            return $this->setup($cipher);
         }
 
         // Fail early if no models are configured for re-encryption
@@ -96,6 +101,44 @@ class RotateAppKey extends Command
         $this->newLine();
 
         return $this->confirm('Do you want to proceed with key reversal?', false);
+    }
+
+    /**
+     * Fresh application setup: generate a new key without rotation or re-encryption.
+     */
+    private function setup(string $cipher): int
+    {
+        $newKey = 'base64:'.base64_encode(Encrypter::generateKey($cipher));
+
+        $envPath = app()->environmentFilePath();
+        $envWritable = $this->isEnvWritable($envPath);
+
+        $envContent = $envWritable ? file_get_contents($envPath) : '';
+
+        if ($envWritable) {
+            if (preg_match('/^APP_KEY=/m', $envContent)) {
+                $envContent = preg_replace('/^APP_KEY=.*$/m', "APP_KEY={$newKey}", $envContent);
+            } else {
+                $envContent .= PHP_EOL."APP_KEY={$newKey}";
+            }
+
+            file_put_contents($envPath, $envContent);
+        }
+
+        config([
+            'app.key' => $newKey,
+            'app.previous_keys' => [],
+        ]);
+
+        $this->info('Application key set successfully.');
+
+        if (! $envWritable) {
+            $this->printEnvInstructions($newKey, []);
+        }
+
+        $this->writeKeyFile($newKey, []);
+
+        return Command::SUCCESS;
     }
 
     /**

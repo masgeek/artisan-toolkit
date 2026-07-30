@@ -163,6 +163,24 @@ class RotateAppKeyTest extends TestCase
         $this->assertSame($originalKey, $data['previous_keys'][0]);
     }
 
+    public function test_new_flag_skips_model_checks_and_rotation(): void
+    {
+        $keyFilePath = $this->tempDir.'/keys.json';
+
+        config()->set('artisan-toolkit.encrypted_models', []);
+        config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
+        config()->set('app.previous_keys', []);
+
+        $this->artisan('key:generate', ['--new' => true, '--no-env-file' => true])
+            ->assertSuccessful();
+
+        $this->assertFileExists($keyFilePath);
+
+        $data = json_decode(File::get($keyFilePath), true);
+        $this->assertStringStartsWith('base64:', $data['current_key']);
+        $this->assertEmpty($data['previous_keys']);
+    }
+
     /**
      * Create a temporary Eloquent model class on disk, require it, and return its FQCN.
      */

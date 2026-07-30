@@ -93,16 +93,19 @@ Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 
 Overrides the native `key:generate` command to rotate the application key. The old `APP_KEY` is appended to `APP_PREVIOUS_KEYS` in `.env`, a new key is generated, and all configured encrypted model attributes are re-encrypted with the new key.
 
-The command prompts for confirmation before proceeding. Use `--force` to skip the prompt (e.g. in scripts or CI).
+The command prompts for confirmation before proceeding. Use `--force` to skip the prompt (e.g. in scripts or CI). Use `--new` for a fresh application setup (skips rotation, re-encryption, and model checks).
 
 ```bash
 # Generate a new key, rotate old key, and re-encrypt configured models
 php artisan key:generate
 
+# Fresh application setup — generates a key without rotation or re-encryption
+php artisan key:generate --new
+
 # Display the new key without applying it
 php artisan key:generate --show
 
-# Force in production
+# Force in production (also skips confirmation prompts)
 php artisan key:generate --force
 
 # Skip .env file writes (Docker / readonly filesystem)
@@ -116,7 +119,8 @@ php artisan key:generate --reverse --steps=3
 ```
 
 | Option | Description |
-|---|---|
+|---|---|---|
+| `--new` | Fresh application setup — generate key without rotation or re-encryption |
 | `--show` | Print the generated key without applying changes |
 | `--force` | Skip confirmation prompts; allow running in production |
 | `--no-env-file` | Skip `.env` writes; prints the new key and previous keys for manual injection |
