@@ -6,6 +6,7 @@ use Masgeek\ArtisanToolkit\Commands\MakeEnumCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand;
 use Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand;
+use Masgeek\ArtisanToolkit\Commands\QueuesCommand;
 use Masgeek\ArtisanToolkit\Commands\RotateAppKey;
 use Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand;
 
@@ -98,6 +99,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queue Names
+    |--------------------------------------------------------------------------
+    |
+    | List of queues that the 'queues' command should manage.
+    |
+    */
+
+    'queues' => [
+        'default',
+        'high',
+        'low',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Commands
     |--------------------------------------------------------------------------
     |
@@ -115,6 +131,7 @@ return [
 
         'model:relations' => ListModelRelationsCommand::class,
         'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
+        'queues' => QueuesCommand::class,
     ],
 
 ];
