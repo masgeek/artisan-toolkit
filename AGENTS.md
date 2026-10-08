@@ -12,26 +12,34 @@ vendor/bin/phpunit tests/SchemaDumpCommandTest.php  # single file
 
 ## Architecture
 
-- Laravel library (not a full app). Tested via **Orchestra Testbench** with `testing` DB (SQLite in-memory, `APP_KEY` in phpunit.xml.dist).
-- `ArtisanToolkitServiceProvider` merges `config/artisan-toolkit.php` and registers commands in two groups:
-  - `overrides` — classes that replace a built-in Artisan command (e.g. `schema:dump`)
-  - `commands` — brand-new commands (e.g. `make:enum`, `model:relations`)
+- Laravel library tested via **Orchestra Testbench** (SQLite in-memory, `DB_CONNECTION=testing`).
+- `ArtisanToolkitServiceProvider` registers commands from `config/artisan-toolkit.php`:
+  - `overrides` — replaces built-in Artisan commands.
+  - `commands` — new custom commands.
 - Setting a config entry to `false` or omitting it disables the command.
-- Namespace: `Masgeek\ArtisanToolkit\` → `src/`, tests → `Masgeek\ArtisanToolkit\Tests\` → `tests/`.
 - PHP 8.2+, Laravel 11–13.
+
+## Critical Logic & Gotchas
+
+- **`schema:dump --prune`**: Modified to only delete migration files already present in the `migrations` table; pending migrations are kept.
+- **`key:generate`**: 
+  - Rotates `APP_KEY` and appends old keys to `APP_PREVIOUS_KEYS` in `.env`.
+  - Re-encrypts models defined in `config/artisan-toolkit.php` (`encrypted_models`).
+  - Can persist keys to a JSON file via `key_storage_path`.
+  - `--reverse` rolls back rotations using stored previous keys.
 
 ## Adding a new command
 
 1. Create class in `src/Commands/` (namespace `Masgeek\ArtisanToolkit\Commands`).
 2. Add to `config/artisan-toolkit.php` under `overrides` or `commands`.
-3. Register in `tests/TestCase.php` `defineEnvironment()` so tests can resolve it.
+3. Register in `tests/TestCase.php` `defineEnvironment()` to ensure tests can resolve it.
 
 ## Testing quirks
 
-- Tests must configure both `artisan-toolkit.overrides` and `artisan-toolkit.commands` in `defineEnvironment()`.
-- Commands that touch filesystem (make:* commands) create files in temp dirs and clean up in `tearDown()`.
-- `SchemaDumpCommandTest` requires a real DB connection (SQLite in-memory via `testing` driver).
-- Coverage reports output to `coverage/` (gitignored).
+- `tests/TestCase::defineEnvironment()` must be updated with any new commands for them to be active during tests.
+- `make:*` commands create files in temp dirs and must be cleaned up in `tearDown()`.
+- `SchemaDumpCommandTest` requires the `testing` DB connection.
+- Coverage reports are in `coverage/`.
 
 ## CI / Release flow
 
@@ -39,21 +47,11 @@ vendor/bin/phpunit tests/SchemaDumpCommandTest.php  # single file
 |---|---|
 | Push to any branch | Unit tests (PHP 8.4, SQLite, coverage ≥70%) |
 | PR to `main` or `develop` | Unit tests |
-| Push to `develop` | Auto PR created targeting `main` (via `next-release.yml`) |
-| Push to `main` (tests pass) | Auto bump-tag + GitHub release (via `bump-and-tag.yml`) |
+| Push to `develop` | Auto PR to `main` (via `next-release.yml`) |
+| Push to `main` | Auto bump-tag + GitHub release (via `bump-and-tag.yml`) |
 
-## git & commit conventions
+## Git & Commit Conventions
 
-- Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
-- Split unrelated changes into separate commits — never mix features, fixes, and chores in one commit.
-- Keep descriptions clear and imperative ("add" not "added").
-
-### Breaking changes
-
-- Mark with `!` after the type (e.g. `feat!:` or `fix!:`) **and/or** a `BREAKING CHANGE:` footer.
-- Must be isolated in their own commit — never hidden inside a normal commit.
-- Describe what changed, what breaks, and migration steps for downstream users.
-
-### Branches
-
-- `main` (stable) ← `develop` (integration).
+- **Conventional Commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
+- **Breaking Changes**: Use `!` after type (e.g., `feat!:`) and a `BREAKING CHANGE:` footer. Must be in an isolated commit.
+- **Branches**: `main` (stable) ← `develop` (integration).
