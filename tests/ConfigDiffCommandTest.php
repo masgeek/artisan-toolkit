@@ -6,11 +6,34 @@ use Illuminate\Support\Facades\Artisan;
 
 class ConfigDiffCommandTest extends TestCase
 {
+    private ?string $originalColumns = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The report is a rendered table whose cells wrap to the terminal width.
+        // Pin a wide terminal so assertions are not split across lines on CI.
+        $this->originalColumns = getenv('COLUMNS');
+        putenv('COLUMNS=200');
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->originalColumns === false || $this->originalColumns === null) {
+            putenv('COLUMNS');
+        } else {
+            putenv('COLUMNS='.$this->originalColumns);
+        }
+
+        parent::tearDown();
+    }
+
     /**
      * Run config:diff and return its output.
      *
-     * The report is a rendered table, which writes one output line per row, so
-     * the buffer is asserted directly rather than through output expectations.
+     * Symfony renders one output line per row, so the buffer is asserted
+     * directly rather than through output expectations.
      */
     private function diff(array $options = []): string
     {
