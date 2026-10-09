@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 class MakeFullResourceCommand extends Command
 {
@@ -27,8 +28,11 @@ class MakeFullResourceCommand extends Command
             $model = Str::before($name, 'Resource');
         }
 
-        $resourcePath = app_path("Http/Resources/{$name}.php");
-        $collectionDir = app_path('Http/Resources/Collection');
+        $namespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $resourceNamespace = $namespace;
+        $collectionNamespace = GeneratorPath::namespaceFor('resource_collections', 'app/Http/Resources/Collections');
+        $resourcePath = GeneratorPath::to('resources', 'app/Http/Resources')."/{$name}.php";
+        $collectionDir = GeneratorPath::to('resource_collections', 'app/Http/Resources/Collections');
         $collectionPath = $collectionDir."/{$name}Collection.php";
 
         if (file_exists($resourcePath) || file_exists($collectionPath)) {
@@ -37,11 +41,10 @@ class MakeFullResourceCommand extends Command
             return self::FAILURE;
         }
 
-        (new Filesystem)->ensureDirectoryExists(app_path('Http/Resources'));
+        (new Filesystem)->ensureDirectoryExists(dirname($resourcePath));
         (new Filesystem)->ensureDirectoryExists($collectionDir);
 
-        $modelImport = $model ? "use App\\Models\\{$model};" : '';
-        $modelDoc = $model ? "@var {$model}" : '';
+        $resourceUses = '';
 
         // Generate fillable fields for toArray()
         $fields = $this->getFillableFields($model);
@@ -78,10 +81,10 @@ class MakeFullResourceCommand extends Command
                 }
 
                 // Add use statements for related resources
-                $resourceUses = collect($relationships)->map(function ($_, $relation) {
+                $resourceUses = collect($relationships)->map(function ($_, $relation) use ($resourceNamespace) {
                     $resourceName = Str::studly(Str::singular($relation)).'Resource';
 
-                    return "use App\\Http\\Resources\\{$resourceName};";
+                    return "use {$resourceNamespace}\\{$resourceName};";
                 })->implode("\n");
 
                 if ($resourceUses) {
@@ -91,14 +94,20 @@ class MakeFullResourceCommand extends Command
         }
 
         // Resource Stub
+        $baseClass = $this->baseClass('resource', 'Illuminate\\Http\\Resources\\Json\\JsonResource');
+        $baseShort = class_basename($baseClass);
+        $modelClass = $model ? GeneratorPath::modelClass($model) : null;
+        $modelImport = $modelClass ? "use {$modelClass};" : '';
+
         $resourceStub = <<<PHP
 <?php
 
-namespace App\Http\Resources;
+namespace {$namespace};
 
 $modelImport$resourceUses
+use {$baseClass};
 
-class {$name} extends \Illuminate\Http\Resources\Json\JsonResource
+class {$name} extends {$baseShort}
 {
     /**
      * Transform the resource into an array.
@@ -122,23 +131,26 @@ PHP;
         $collectionStub = <<<PHP
 <?php
 
-namespace App\Http\Resources\Collection;
+namespace {$collectionNamespace};
 
-class {$name}Collection extends \Illuminate\Http\Resources\Json\ResourceCollection
+use {$resourceNamespace}\\{$name};
+use Illuminate\Http\Resources\Json\ResourceCollection;
+
+class {$name}Collection extends ResourceCollection
 {
     public function toArray(\$request):array
     {
         return [
-            'data' => \\App\\Http\\Resources\\{$name}::collection(\$this->collection),
+            'data' => {$name}::collection(\$this->collection),
         ];
     }
 }
 PHP;
 
-        file_put_contents($resourcePath, $resourceStub);
-        file_put_contents($collectionPath, $collectionStub);
+        (new Filesystem)->put($resourcePath, $resourceStub);
+        (new Filesystem)->put($collectionPath, $collectionStub);
 
-        $this->info("Resource '{$name}' and 'Collection/{$name}Collection' created successfully.");
+        $this->info("Resource '{$name}' and '{$name}Collection' created successfully.");
 
         return self::SUCCESS;
     }
@@ -148,7 +160,11 @@ PHP;
      */
     protected function getFillableFields($model): ?array
     {
-        $modelClass = "App\\Models\\{$model}";
+        if (! $model) {
+            return null;
+        }
+
+        $modelClass = GeneratorPath::modelClass($model);
 
         if (! class_exists($modelClass)) {
             return null;
@@ -168,7 +184,11 @@ PHP;
      */
     protected function getRelationships($model): array
     {
-        $modelClass = "App\\Models\\{$model}";
+        if (! $model) {
+            return [];
+        }
+
+        $modelClass = GeneratorPath::modelClass($model);
 
         if (! class_exists($modelClass)) {
             return [];
@@ -203,20 +223,25 @@ PHP;
      */
     protected function generateMissingResource($resourceName): void
     {
-        $resourcePath = app_path("Http/Resources/{$resourceName}.php");
+        $namespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $resourcePath = GeneratorPath::to('resources', 'app/Http/Resources')."/{$resourceName}.php";
 
         if (file_exists($resourcePath)) {
             return;
         }
 
+        (new Filesystem)->ensureDirectoryExists(dirname($resourcePath));
+
+        $baseClass = $this->baseClass('resource', 'Illuminate\\Http\\Resources\\Json\\JsonResource');
+
         $stub = <<<PHP
 <?php
 
-namespace App\Http\Resources;
+namespace {$namespace};
 
-use Illuminate\Http\Resources\Json\JsonResource;
+use {$baseClass};
 
-class {$resourceName} extends JsonResource
+class {$resourceName} extends {$baseClass}
 {
     public function toArray(\$request)
     {
@@ -225,7 +250,17 @@ class {$resourceName} extends JsonResource
 }
 PHP;
 
-        file_put_contents($resourcePath, $stub);
+        (new Filesystem)->put($resourcePath, $stub);
         $this->info("Generated missing resource: {$resourceName}");
+    }
+
+    /**
+     * Resolve a configured base class FQCN for generated stubs.
+     */
+    private function baseClass(string $key, string $default): string
+    {
+        $class = config("artisan-toolkit.base_classes.{$key}");
+
+        return is_string($class) && $class !== '' ? trim($class, '\\') : $default;
     }
 }

@@ -5,6 +5,8 @@ namespace Masgeek\ArtisanToolkit\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 class MakeEnumCommand extends Command
 {
@@ -15,7 +17,7 @@ class MakeEnumCommand extends Command
                                 {--table= : Generate cases from distinct values of a DB column (e.g. users.role)}
                                 {--force : Overwrite if the file already exists}';
 
-    protected $description = 'Create a new PHP enum in app/Enums/';
+    protected $description = 'Create a new PHP enum in the configured paths.enums directory';
 
     public function handle(Filesystem $files): int
     {
@@ -62,9 +64,12 @@ class MakeEnumCommand extends Command
         $className = array_pop($parts);
         $sub = implode('\\', $parts);
 
-        $namespace = 'App\\Enums'.($sub ? '\\'.$sub : '');
-        $basePath = config('artisan-toolkit.paths.enums', 'app/Enums');
-        $relativeDir = $basePath.($sub ? '/'.str_replace('\\', '/', $sub) : '');
+        // Namespace follows the configured directory so moving paths.enums also
+        // moves the namespace, keeping the file resolvable by the autoloader.
+        $baseNamespace = GeneratorPath::namespaceFor('enums', 'app/Enums');
+
+        $namespace = $baseNamespace.($sub ? '\\'.$sub : '');
+        $relativeDir = GeneratorPath::relative('enums', 'app/Enums').($sub ? '/'.str_replace('\\', '/', $sub) : '');
         $filePath = base_path($relativeDir.'/'.$className.'.php');
 
         return [$namespace, $className, $filePath];
@@ -147,9 +152,23 @@ class MakeEnumCommand extends Command
         return implode("\n", $lines);
     }
 
+    /**
+     * Turn a database value into a valid PHP enum case name.
+     *
+     * Values are often lower-case or separated by separators ("in-progress",
+     * "2fa"), which are not valid case identifiers on their own.
+     */
     private function toStudlyCase(string $value): string
     {
-        return str_replace('_', ' ', $value); // simplified for this example, ideally use Str::studly
+        $studly = Str::studly($value);
+
+        // Fall back to a positional name if the value has no usable characters
+        // (e.g. a numeric or symbol-only column) or collides with PHP keywords.
+        if ($studly === '' || ! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $studly)) {
+            return 'Value'.substr(md5($value), 0, 6);
+        }
+
+        return $studly;
     }
 
     private function toSnakeCase(string $name): string

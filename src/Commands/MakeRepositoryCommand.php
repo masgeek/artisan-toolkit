@@ -4,47 +4,51 @@ namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 class MakeRepositoryCommand extends Command
 {
-    protected $signature = 'make:repo {name} {--model=}';
+    protected $signature = 'make:repo {name} {--model=} {--force : Overwrite an existing repository}';
 
     protected $description = 'Create a new repository class';
 
-    public function handle(): int
+    public function handle(Filesystem $files): int
     {
         $name = $this->argument('name');
         $model = $this->option('model');
-        $repositoryPath = app_path("Repositories/{$name}.php");
 
-        if (file_exists($repositoryPath)) {
-            $this->error("Repository '{$name}' already exists!");
+        $relative = GeneratorPath::relative('repositories', 'app/Repositories');
+        $namespace = GeneratorPath::namespaceFor('repositories', 'app/Repositories');
+        $repositoryPath = base_path($relative."/{$name}.php");
+
+        if (file_exists($repositoryPath) && ! $this->option('force')) {
+            $this->error("Repository '{$name}' already exists! Use --force to overwrite.");
 
             return self::FAILURE;
         }
 
-        (new Filesystem)->ensureDirectoryExists(app_path('Repositories'));
+        $files->ensureDirectoryExists(dirname($repositoryPath));
 
-        $modelClass = $model ? "\\App\\Models\\{$model}" : '';
-        $modelImport = $model ? "use {$modelClass};" : '';
-        $modelVariable = 'model';
+        $baseClass = config('artisan-toolkit.base_classes.repository', 'App\\Repositories\\BaseRepo');
+        $baseClass = is_string($baseClass) && $baseClass !== '' ? trim($baseClass, '\\') : 'App\\Repositories\\BaseRepo';
+        $baseShort = class_basename($baseClass);
+
         $modelType = $model ?: 'Model';
+        $modelImport = $model ? 'use '.GeneratorPath::modelClass($model).';' : '';
 
         $stub = <<<PHP
 <?php
 
-namespace App\Repositories;
+namespace {$namespace};
 
-$modelImport
-
+use {$baseClass};
+{$modelImport}
 
 /**
- * @extends \App\Repositories\BaseRepo<$modelType>
+ * @extends {$baseShort}<{$modelType}>
  */
-class {$name} extends \App\Repositories\BaseRepository
+class {$name} extends {$baseShort}
 {
-    protected {$modelType} \${$modelVariable};
-
     protected function model(): string
     {
         return {$modelType}::class;
@@ -52,9 +56,9 @@ class {$name} extends \App\Repositories\BaseRepository
 }
 PHP;
 
-        file_put_contents($repositoryPath, $stub);
+        $files->put($repositoryPath, $stub);
 
-        $this->info("Repository '{$name}' created successfully.");
+        $this->info("Repository [{$repositoryPath}] created successfully.");
 
         return self::SUCCESS;
     }

@@ -7,7 +7,7 @@ namespace Masgeek\ArtisanToolkit\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
-use Throwable;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 final class MakeApiEndpointCommand extends Command
 {
@@ -25,6 +25,7 @@ final class MakeApiEndpointCommand extends Command
         $model = $this->option('model') ?: $name;
 
         $paths = config('artisan-toolkit.paths');
+        $requestsNamespace = GeneratorPath::namespaceFor('requests', 'app/Http/Requests');
         $controllerPath = base_path($paths['api_controllers']."/{$name}Controller.php");
 
         if (! file_exists($controllerPath)) {
@@ -34,23 +35,24 @@ final class MakeApiEndpointCommand extends Command
 
         $requestName = "{$name}" . Str::studly($method) . "Request";
         $requestPath = base_path($paths['requests']."/{$requestName}.php");
+        $requestClass = "{$requestsNamespace}\\{$requestName}";
 
         $this->info("Adding {$method} to {$name}Controller...");
-        $this->injectMethod($controllerPath, $method, $requestName);
+        $this->injectMethod($controllerPath, $method, $requestName, $requestClass);
 
         if (! file_exists($requestPath)) {
             $files->ensureDirectoryExists(dirname($requestPath));
-            $files->put($requestPath, $this->requestStub($requestName));
+            $files->put($requestPath, $this->requestStub($requestName, $requestsNamespace));
             $this->info("Created Request: {$requestName}");
         }
 
         return self::SUCCESS;
     }
 
-    private function injectMethod(string $path, string $method, string $requestName): void
+    private function injectMethod(string $path, string $method, string $requestName, string $requestClass): void
     {
         $content = file_get_contents($path);
-        $methodStub = "\n    public function {$method}(\\App\\Http\\Requests\\{$requestName} \$request)\n    {\n        // Logic here\n    }\n";
+        $methodStub = "\n    public function {$method}(\\{$requestClass} \$request)\n    {\n        // Logic here\n    }\n";
 
         // Insert before last closing brace
         $lastBrace = strrpos($content, '}');
@@ -58,8 +60,8 @@ final class MakeApiEndpointCommand extends Command
         file_put_contents($path, $updated);
     }
 
-    private function requestStub(string $name): string
+    private function requestStub(string $name, string $namespace): string
     {
-        return "<?php\n\nnamespace App\\Http\\Requests;\n\nuse Illuminate\\Foundation\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function authorize(): bool { return true; }\n\n    public function rules(): array { return []; }\n}";
+        return "<?php\n\nnamespace {$namespace};\n\nuse Illuminate\\Foundation\\Http\\FormRequest;\n\nclass {$name} extends FormRequest\n{\n    public function authorize(): bool { return true; }\n\n    public function rules(): array { return []; }\n}";
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 use Throwable;
 
 final class MakeDtoCommand extends Command
@@ -23,8 +24,8 @@ final class MakeDtoCommand extends Command
         $name = Str::studly($this->argument('name'));
         $modelName = $this->option('model');
         
-        $path = config('artisan-toolkit.paths.dtos', 'app/DTOs');
-        $filePath = base_path($path."/{$name}.php");
+        $namespace = GeneratorPath::namespaceFor('dtos', 'app/DTOs');
+        $filePath = GeneratorPath::to('dtos', 'app/DTOs')."/{$name}.php";
         
         if ($files->exists($filePath)) {
             $this->error("DTO [{$name}] already exists.");
@@ -48,14 +49,14 @@ final class MakeDtoCommand extends Command
             }
         }
 
-        $content = $this->buildContent($name, $properties);
+        $content = $this->buildContent($name, $properties, $namespace);
         $files->put($filePath, $content);
 
         $this->info("DTO [{$filePath}] created successfully.");
         return self::SUCCESS;
     }
 
-    private function buildContent(string $name, array $properties): string
+    private function buildContent(string $name, array $properties, string $namespace): string
     {
         $propLines = [];
         $constructorParams = [];
@@ -77,7 +78,7 @@ final class MakeDtoCommand extends Command
         return implode("\n", [
             '<?php',
             '',
-            'namespace App\\DTOs;',
+            "namespace {$namespace};",
             '',
             "final class {$name}",
             '{',

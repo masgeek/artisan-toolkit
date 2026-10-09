@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 use Throwable;
 
 class MakeApiScaffoldCommand extends Command
@@ -133,26 +134,26 @@ ROUTE;
     private function buildFiles(string $name, string $model): array
     {
         $requestName = "{$name}Request";
-        
+
         return [
-            "Http/Controllers/Api/{$name}Controller.php" => [
-                app_path("Http/Controllers/Api/{$name}Controller.php"),
+            "{$name}Controller.php" => [
+                GeneratorPath::to('api_controllers', 'app/Http/Controllers/Api')."/{$name}Controller.php",
                 $this->controllerStub($name, $model),
             ],
-            "Repositories/{$name}Repo.php" => [
-                app_path("Repositories/{$name}Repo.php"),
+            "{$name}Repo.php" => [
+                GeneratorPath::to('repositories', 'app/Repositories')."/{$name}Repo.php",
                 $this->repoStub($name, $model),
             ],
-            "Http/Resources/{$name}Resource.php" => [
-                app_path("Http/Resources/{$name}Resource.php"),
+            "{$name}Resource.php" => [
+                GeneratorPath::to('resources', 'app/Http/Resources')."/{$name}Resource.php",
                 $this->resourceStub($name, $model),
             ],
-            "Http/Resources/Collections/{$name}ResourceCollection.php" => [
-                app_path("Http/Resources/Collections/{$name}ResourceCollection.php"),
+            "{$name}ResourceCollection.php" => [
+                GeneratorPath::to('resource_collections', 'app/Http/Resources/Collections')."/{$name}ResourceCollection.php",
                 $this->collectionStub($name),
             ],
-            "Http/Requests/{$requestName}.php" => [
-                app_path("Http/Requests/{$requestName}.php"),
+            "{$requestName}.php" => [
+                GeneratorPath::to('requests', 'app/Http/Requests')."/{$requestName}.php",
                 $this->requestStub($name, $model),
             ],
         ];
@@ -164,20 +165,22 @@ ROUTE;
 
     private function controllerStub(string $name, string $model): string
     {
-        $repoClass = "App\\Repositories\\{$name}Repo";
-        $collectionClass = "App\\Http\\Resources\\Collections\\{$name}ResourceCollection";
+        $namespace = GeneratorPath::namespaceFor('api_controllers', 'app/Http/Controllers/Api');
+        $repoNamespace = GeneratorPath::namespaceFor('repositories', 'app/Repositories');
+        $collectionNamespace = GeneratorPath::namespaceFor('resource_collections', 'app/Http/Resources/Collections');
+        $repoClass = "{$repoNamespace}\\{$name}Repo";
+        $collectionClass = "{$collectionNamespace}\\{$name}ResourceCollection";
         $repoVar = lcfirst($name).'Repo';
-        $modelVar = lcfirst($name);
 
         return <<<PHP
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace {$namespace};
 
-use App\Http\Concerns\HasPaginationParams;
-use App\Http\Controllers\Controller;
 use {$collectionClass};
 use {$repoClass};
+use App\Http\Concerns\HasPaginationParams;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class {$name}Controller extends Controller
@@ -208,21 +211,24 @@ PHP;
 
     private function repoStub(string $name, string $model): string
     {
+        $namespace = GeneratorPath::namespaceFor('repositories', 'app/Repositories');
+        $baseClass = $this->baseClass('repository', 'App\\Repositories\\BaseRepo');
+        $baseShort = class_basename($baseClass);
+        $modelClass = GeneratorPath::modelClass($model);
+
         return <<<PHP
 <?php
 
-namespace App\Repositories;
+namespace {$namespace};
 
-use App\Models\\$model;
+use {$baseClass};
+use {$modelClass};
 
-/**
- * @extends BaseRepo<$model>
- */
-class {$name}Repo extends BaseRepo
+class {$name}Repo extends {$baseShort}
 {
     protected function model(): string
     {
-        return $model::class;
+        return {$model}::class;
     }
 }
 PHP;
@@ -230,6 +236,11 @@ PHP;
 
     private function resourceStub(string $name, string $model): string
     {
+        $namespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $baseClass = $this->baseClass('resource', 'Illuminate\\Http\\Resources\\Json\\JsonResource');
+        $baseShort = class_basename($baseClass);
+        $modelClass = GeneratorPath::modelClass($model);
+
         $fields = $this->getFillableFields($model);
         $dateFields = $this->getDateFields($model);
         $fieldLines = $this->buildFieldLines($fields, $dateFields);
@@ -237,15 +248,16 @@ PHP;
         return <<<PHP
 <?php
 
-namespace App\Http\Resources;
+namespace {$namespace};
 
-use App\Models\\$model;
+use {$baseClass};
+use {$modelClass};
 use Illuminate\Http\Request;
 
 /**
  * @mixin {$model}
  */
-class {$name}Resource extends BaseJsonResource
+class {$name}Resource extends {$baseShort}
 {
     public function toArray(Request \$request): array
     {
@@ -259,12 +271,16 @@ PHP;
 
     private function collectionStub(string $name): string
     {
+        $namespace = GeneratorPath::namespaceFor('resource_collections', 'app/Http/Resources/Collections');
+        $resourceNamespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $resourceClass = "{$resourceNamespace}\\{$name}Resource";
+
         return <<<PHP
 <?php
 
-namespace App\Http\Resources\Collections;
+namespace {$namespace};
 
-use App\Http\Resources\\{$name}Resource;
+use {$resourceClass};
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
@@ -280,8 +296,19 @@ class {$name}ResourceCollection extends ResourceCollection
 PHP;
     }
 
+    /**
+     * Resolve a configured base class FQCN for generated stubs.
+     */
+    private function baseClass(string $key, string $default): string
+    {
+        $class = config("artisan-toolkit.base_classes.{$key}");
+
+        return is_string($class) && $class !== '' ? trim($class, '\\') : $default;
+    }
+
     private function requestStub(string $name, string $model): string
     {
+        $namespace = GeneratorPath::namespaceFor('requests', 'app/Http/Requests');
         $fields = $this->getFillableFields($model);
         $rules = [];
 
@@ -294,7 +321,7 @@ PHP;
         return <<<PHP
 <?php
 
-namespace App\Http\Requests;
+namespace {$namespace};
 
 use Illuminate\Foundation\Http\FormRequest;
 

@@ -7,6 +7,7 @@ namespace Masgeek\ArtisanToolkit\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 final class MakeServiceCommand extends Command
 {
@@ -17,8 +18,8 @@ final class MakeServiceCommand extends Command
     public function handle(Filesystem $files): int
     {
         $name = Str::studly($this->argument('name'));
-        $path = config('artisan-toolkit.paths.services', 'app/Services');
-        $filePath = base_path($path."/{$name}Service.php");
+        $namespace = GeneratorPath::namespaceFor('services', 'app/Services');
+        $filePath = GeneratorPath::to('services', 'app/Services')."/{$name}Service.php";
 
         if ($files->exists($filePath)) {
             $this->error("Service [{$name}Service] already exists.");
@@ -30,7 +31,7 @@ final class MakeServiceCommand extends Command
         $content = implode("\n", [
             '<?php',
             '',
-            'namespace App\\Services;',
+            "namespace {$namespace};",
             '',
             "final class {$name}Service",
             '{',
