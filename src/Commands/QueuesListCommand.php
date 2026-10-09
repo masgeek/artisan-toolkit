@@ -26,7 +26,10 @@ final class QueuesListCommand extends Command
         }
 
         $this->info('Available queues:');
-        $this->line(implode("\n", array_map(fn($q) => "- $q", $queues)));
+
+        foreach ($queues as $queue) {
+            $this->line("- {$queue}");
+        }
 
         return self::SUCCESS;
     }
