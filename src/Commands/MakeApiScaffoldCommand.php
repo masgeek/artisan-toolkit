@@ -11,19 +11,30 @@ use Throwable;
 class MakeApiScaffoldCommand extends Command
 {
     protected $signature = 'make:api-scaffold
-                            {name : Base name, e.g. Currency or StarchFactory}
-                            {--model= : Model class name (defaults to {name})}
-                            {--prefix= : URL prefix override, e.g. starch-factories (defaults to kebab-plural of name)}
-                            {--force : Overwrite existing files}
-                            {--no-route : Skip automatic route registration}';
+                                {name? : Base name, e.g. Currency or StarchFactory}
+                                {--model= : Model class name (defaults to {name})}
+                                {--prefix= : URL prefix override, e.g. starch-factories (defaults to kebab-plural of name)}
+                                {--force : Overwrite existing files}
+                                {--no-route : Skip automatic route registration}';
 
     protected $description = 'Scaffold an API controller, repository, resource, and resource collection for a given name';
 
     public function handle(): int
     {
-        $name = Str::studly($this->argument('name'));
+        $nameArg = $this->argument('name');
+
+        if (! $nameArg) {
+            $nameArg = $this->ask('What is the name of the API scaffold?');
+            if (! $nameArg) {
+                $this->error('The name argument is required.');
+                return self::FAILURE;
+            }
+        }
+
+        $name = Str::studly($nameArg);
         $model = Str::studly($this->option('model') ?: $name);
         $force = $this->option('force');
+
 
         $this->line("Scaffolding <info>{$name}</info> (model: <info>{$model}</info>)...");
 
@@ -74,6 +85,12 @@ class MakeApiScaffoldCommand extends Command
     private function registerRoute(string $name, string $prefix): void
     {
         $routesFile = base_path('routes/api.php');
+
+        if (! file_exists($routesFile)) {
+            $this->warn('  routes/api.php not found. In Laravel 11+, run "php artisan install:api" to create it.');
+            return;
+        }
+
         $contents = file_get_contents($routesFile);
         $controller = "\\App\\Http\\Controllers\\Api\\{$name}Controller";
 
@@ -85,28 +102,29 @@ class MakeApiScaffoldCommand extends Command
 
 ROUTE;
 
-        // Insert before the closing }); of the throttle:120,1 group.
-        // The anchor is the last }); before the mutating-endpoints comment.
+        // Insertion strategy:
+        // 1. If the "mutating-endpoints" anchor exists, use it (legacy/specific layout).
+        // 2. Otherwise, append to the end of the file (standard for new Laravel 11+ installs).
         $anchor = "\n});\n\n// Mutating";
 
-        if (! str_contains($contents, $anchor)) {
-            $this->warn('  Could not find insertion point in routes/api.php — add the route manually.');
-            $this->line("  Route block:\n{$routeBlock}");
+        if (str_contains($contents, $anchor)) {
+            if (str_contains($contents, "v1/{$prefix}")) {
+                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+                return;
+            }
 
-            return;
+            $updated = str_replace($anchor, "\n".$routeBlock."});\n\n// Mutating", $contents);
+            file_put_contents($routesFile, $updated);
+            $this->info("  Route:   GET /v1/{$prefix} registered in routes/api.php");
+        } else {
+            if (str_contains($contents, "v1/{$prefix}")) {
+                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+                return;
+            }
+
+            file_put_contents($routesFile, $contents . $routeBlock);
+            $this->info("  Route:   GET /v1/{$prefix} appended to routes/api.php");
         }
-
-        // Guard against duplicate registration
-        if (str_contains($contents, "v1/{$prefix}")) {
-            $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
-
-            return;
-        }
-
-        $updated = str_replace($anchor, "\n".$routeBlock."});\n\n// Mutating", $contents);
-        file_put_contents($routesFile, $updated);
-
-        $this->info("  Route:   GET /v1/{$prefix} registered in routes/api.php");
     }
 
     /**
@@ -114,6 +132,8 @@ ROUTE;
      */
     private function buildFiles(string $name, string $model): array
     {
+        $requestName = "{$name}Request";
+        
         return [
             "Http/Controllers/Api/{$name}Controller.php" => [
                 app_path("Http/Controllers/Api/{$name}Controller.php"),
@@ -130,6 +150,10 @@ ROUTE;
             "Http/Resources/Collections/{$name}ResourceCollection.php" => [
                 app_path("Http/Resources/Collections/{$name}ResourceCollection.php"),
                 $this->collectionStub($name),
+            ],
+            "Http/Requests/{$requestName}.php" => [
+                app_path("Http/Requests/{$requestName}.php"),
+                $this->requestStub($name, $model),
             ],
         ];
     }
@@ -170,7 +194,7 @@ class {$name}Controller extends Controller
         \$orderBy = \$this->getOrderBy(\$request, ['created_at'], 'created_at');
         \$sort    = \$this->getSortDirection(\$request);
 
-        \$items = \$this->{$repoVar}->paginateWithSort(
+        \$items = \$this->$repoVar->paginateWithSort(
             perPage: \$perPage,
             orderBy: \$orderBy,
             direction: \$sort,
@@ -189,16 +213,16 @@ PHP;
 
 namespace App\Repositories;
 
-use App\Models\\{$model};
+use App\Models\\$model;
 
 /**
- * @extends BaseRepo<{$model}>
+ * @extends BaseRepo<$model>
  */
 class {$name}Repo extends BaseRepo
 {
     protected function model(): string
     {
-        return {$model}::class;
+        return $model::class;
     }
 }
 PHP;
@@ -215,7 +239,7 @@ PHP;
 
 namespace App\Http\Resources;
 
-use App\Models\\{$model};
+use App\Models\\$model;
 use Illuminate\Http\Request;
 
 /**
@@ -256,13 +280,48 @@ class {$name}ResourceCollection extends ResourceCollection
 PHP;
     }
 
+    private function requestStub(string $name, string $model): string
+    {
+        $fields = $this->getFillableFields($model);
+        $rules = [];
+
+        foreach ($fields as $field) {
+            $rules[] = "            '$field' => ['nullable', 'string'],";
+        }
+
+        $rulesBlock = empty($rules) ? "            // No fillable fields found in $model" : implode("\n", $rules);
+
+        return <<<PHP
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class {$name}Request extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+{$rulesBlock}
+        ];
+    }
+}
+PHP;
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
     private function getFillableFields(string $model): array
     {
-        $modelClass = "App\\Models\\{$model}";
+        $modelClass = "App\\Models\\$model";
 
         if (! class_exists($modelClass)) {
             return [];
@@ -279,7 +338,7 @@ PHP;
 
     private function getDateFields(string $model): array
     {
-        $modelClass = "App\\Models\\{$model}";
+        $modelClass = "App\\Models\\$model";
 
         if (! class_exists($modelClass)) {
             return [];
@@ -315,10 +374,10 @@ PHP;
         return collect($fields)
             ->map(function ($field) use ($dateFields) {
                 if (in_array($field, $dateFields, true)) {
-                    return "            '{$field}' => \$this->formatDate(\$this->{$field}),";
+                    return "            '$field' => \$this->formatDate(\$this->$field),";
                 }
 
-                return "            '{$field}' => \$this->{$field},";
+                return "            '$field' => \$this->$field,";
             })
             ->implode("\n");
     }

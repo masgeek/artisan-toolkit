@@ -39,6 +39,15 @@ class MakeApiScaffoldCommandTest extends TestCase
         parent::tearDown();
     }
 
+    private function assertPhpSyntax(string $filePath): void
+    {
+        $output = [];
+        $resultCode = 0;
+        exec("php -l " . escapeshellarg($filePath), $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, "PHP syntax error in {$filePath}: " . implode("\n", $output));
+    }
+
     public function test_it_creates_all_scaffold_files(): void
     {
         $this->artisan('make:api-scaffold', [
@@ -47,9 +56,16 @@ class MakeApiScaffoldCommandTest extends TestCase
         ])->assertSuccessful();
 
         $this->assertFileExists($this->paths['controller'].'/CurrencyController.php');
+        $this->assertPhpSyntax($this->paths['controller'].'/CurrencyController.php');
+
         $this->assertFileExists($this->paths['repo'].'/CurrencyRepo.php');
+        $this->assertPhpSyntax($this->paths['repo'].'/CurrencyRepo.php');
+
         $this->assertFileExists($this->paths['resource'].'/CurrencyResource.php');
+        $this->assertPhpSyntax($this->paths['resource'].'/CurrencyResource.php');
+
         $this->assertFileExists($this->paths['collection'].'/CurrencyResourceCollection.php');
+        $this->assertPhpSyntax($this->paths['collection'].'/CurrencyResourceCollection.php');
     }
 
     public function test_it_creates_scaffold_with_custom_model(): void
