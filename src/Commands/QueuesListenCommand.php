@@ -25,6 +25,11 @@ final class QueuesListenCommand extends Command
             $this->fail('No queues defined in config/artisan-toolkit.php.');
         }
 
-        return $this->call('queue:listen', ['--queue' => implode(',', $queues)]);
+        $timeout = config('artisan-toolkit.queue_timeout', 60);
+
+        return $this->call('queue:listen', [
+            '--queue' => implode(',', $queues),
+            '--timeout' => (string) $timeout,
+        ]);
     }
 }

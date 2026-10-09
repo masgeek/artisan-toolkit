@@ -18,6 +18,11 @@ class ArtisanToolkitServiceProvider extends ServiceProvider
                 __DIR__.'/../config/artisan-toolkit.php' => config_path('artisan-toolkit.php'),
             ], 'artisan-toolkit-config');
 
+            // Simple alias for publishing the config
+            $this->publishes([
+                __DIR__.'/../config/artisan-toolkit.php' => config_path('artisan-toolkit.php'),
+            ]);
+
             $this->registerCommands();
         }
     }
@@ -34,12 +39,20 @@ class ArtisanToolkitServiceProvider extends ServiceProvider
                 'make:api-scaffold' => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
                 'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
                 'make:repo' => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+                'make:dto' => \Masgeek\ArtisanToolkit\Commands\MakeDtoCommand::class,
+                'make:service' => \Masgeek\ArtisanToolkit\Commands\MakeServiceCommand::class,
+                'make:api-endpoint' => \Masgeek\ArtisanToolkit\Commands\MakeApiEndpointCommand::class,
                 'model:relations' => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
                 'model:prune-orphaned' => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
                 'queues:list' => \Masgeek\ArtisanToolkit\Commands\QueuesListCommand::class,
                 'queues:listen' => \Masgeek\ArtisanToolkit\Commands\QueuesListenCommand::class,
                 'queues:clear' => \Masgeek\ArtisanToolkit\Commands\QueuesClearCommand::class,
+                'config:diff' => \Masgeek\ArtisanToolkit\Commands\ConfigDiffCommand::class,
+                'db:seed-partial' => \Masgeek\ArtisanToolkit\Commands\DbSeedPartialCommand::class,
+                'app:status' => \Masgeek\ArtisanToolkit\Commands\AppStatusCommand::class,
+                'route:filter' => \Masgeek\ArtisanToolkit\Commands\RouteFilterCommand::class,
             ],
+
         ];
 
         $userOverrides = config('artisan-toolkit.overrides', []);

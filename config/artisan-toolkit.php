@@ -1,14 +1,5 @@
 <?php
 
-use Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand;
-use Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand;
-use Masgeek\ArtisanToolkit\Commands\MakeEnumCommand;
-use Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand;
-use Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand;
-use Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand;
-use Masgeek\ArtisanToolkit\Commands\QueuesCommand;
-use Masgeek\ArtisanToolkit\Commands\RotateAppKey;
-use Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand;
 
 return [
 
@@ -30,8 +21,8 @@ return [
 
     'overrides' => [
 
-        'schema:dump' => SchemaDumpCommand::class,
-        'key:generate' => RotateAppKey::class,
+        'schema:dump' => \Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand::class,
+        'key:generate' => \Masgeek\ArtisanToolkit\Commands\RotateAppKey::class,
 
     ],
 
@@ -107,10 +98,10 @@ return [
     */
 
     'queues' => [
-        'default',
-        'high',
-        'low',
+        'default'
     ],
+
+    'queue_timeout' => env('QUEUE_TIMEOUT', 60),
 
     /*
     |--------------------------------------------------------------------------
@@ -123,15 +114,28 @@ return [
     */
 
     'commands' => [
+        'make:enum' => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
+        'make:api-scaffold' => \Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand::class,
+        'make:resource-full' => \Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand::class,
+        'make:repo' => \Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand::class,
+        'make:dto' => \Masgeek\ArtisanToolkit\Commands\MakeDtoCommand::class,
+        'make:service' => \Masgeek\ArtisanToolkit\Commands\MakeServiceCommand::class,
+        'make:api-endpoint' => \Masgeek\ArtisanToolkit\Commands\MakeApiEndpointCommand::class,
 
-        'make:enum' => MakeEnumCommand::class,
-        'make:api-scaffold' => MakeApiScaffoldCommand::class,
-        'make:resource-full' => MakeFullResourceCommand::class,
-        'make:repo' => MakeRepositoryCommand::class,
+        'model:relations' => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
+        'model:prune-orphaned' => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
+        'model:analyze' => \Masgeek\ArtisanToolkit\Commands\ModelAnalyzeCommand::class,
+        'model:find-unused' => \Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand::class,
 
-        'model:relations' => ListModelRelationsCommand::class,
-        'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
-        'queues' => QueuesCommand::class,
+        'queues:list' => \Masgeek\ArtisanToolkit\Commands\QueuesListCommand::class,
+        'queues:listen' => \Masgeek\ArtisanToolkit\Commands\QueuesListenCommand::class,
+        'queues:clear' => \Masgeek\ArtisanToolkit\Commands\QueuesClearCommand::class,
+
+        'config:diff' => \Masgeek\ArtisanToolkit\Commands\ConfigDiffCommand::class,
+        'db:seed-partial' => \Masgeek\ArtisanToolkit\Commands\DbSeedPartialCommand::class,
+        'app:status' => \Masgeek\ArtisanToolkit\Commands\AppStatusCommand::class,
+        'route:filter' => \Masgeek\ArtisanToolkit\Commands\RouteFilterCommand::class,
     ],
+
 
 ];
