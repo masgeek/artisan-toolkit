@@ -23,7 +23,7 @@ Run the test suite:
 
 ```bash
 composer test                          # phpunit, no coverage
-composer test:coverage                 # phpunit with coverage (threshold: 70%)
+composer test:coverage                 # phpunit with coverage (prints a summary table)
 vendor/bin/phpunit --filter test_name  # single test by name
 vendor/bin/phpunit tests/MakeEnumCommandTest.php   # single file
 ```
@@ -35,7 +35,7 @@ vendor/bin/pint                        # fix
 vendor/bin/pint --test                 # check only
 ```
 
-> Coverage requires Xdebug or PCOV. Without a driver `composer test:coverage` reports "No code coverage driver available".
+> Coverage needs Xdebug or PCOV. The script sets `XDEBUG_MODE=coverage` for you, so Xdebug does not need to be enabled globally. If you still see "No code coverage driver available", the extension is not installed or enabled for your PHP binary.
 
 ---
 

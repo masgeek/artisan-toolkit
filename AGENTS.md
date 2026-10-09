@@ -4,7 +4,7 @@
 
 ```bash
 composer test                 # phpunit, no coverage
-composer test:coverage        # needs Xdebug/PCOV locally; CI has it
+composer test:coverage        # sets XDEBUG_MODE=coverage itself; needs the extension installed
 vendor/bin/phpunit --filter X # single test
 vendor/bin/pint               # lint/fix
 ```
