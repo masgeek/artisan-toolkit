@@ -31,7 +31,7 @@ final class ConfigDiffCommand extends Command
             ],
             'encrypted_models' => [],
             'key_storage_path' => storage_path('app/keys/app-keys.json'),
-            'queues' => ['default'],
+            'queues' => ['default','high','low'],
             'queue_timeout' => 60,
             'commands' => [
                 'make:enum' => \Masgeek\ArtisanToolkit\Commands\MakeEnumCommand::class,
