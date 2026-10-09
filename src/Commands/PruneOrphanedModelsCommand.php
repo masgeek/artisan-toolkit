@@ -11,7 +11,7 @@ use Symfony\Component\Finder\Finder;
 class PruneOrphanedModelsCommand extends Command
 {
     protected $signature = 'model:prune-orphaned
-                            {--path=* : One or more directories to scan (defaults to artisan-toolkit.model_scan_paths config)}
+                            {--path=* : One or more directories to scan (defaults to artisan-toolkit.paths.model_scan config)}
                             {--search=app : Directory to search for references (relative to base path, or absolute)}
                             {--delete : Delete the orphaned model files}
                             {--force : Skip confirmation prompt when deleting}';
