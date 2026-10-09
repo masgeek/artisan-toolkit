@@ -194,7 +194,7 @@ class {$name}Controller extends Controller
         \$orderBy = \$this->getOrderBy(\$request, ['created_at'], 'created_at');
         \$sort    = \$this->getSortDirection(\$request);
 
-        \$items = \$this->$repoVar->paginateWithSort(
+        \$items = \$this->{$repoVar}->paginateWithSort(
             perPage: \$perPage,
             orderBy: \$orderBy,
             direction: \$sort,
