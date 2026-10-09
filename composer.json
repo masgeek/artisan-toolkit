@@ -49,7 +49,10 @@
   "prefer-stable": true,
   "scripts": {
     "test": "vendor/bin/phpunit --no-coverage",
-    "test:coverage": "vendor/bin/phpunit"
+    "test:coverage": [
+      "@putenv XDEBUG_MODE=coverage",
+      "@php vendor/bin/phpunit --coverage-text"
+    ]
   },
   "config": {
     "optimize-autoloader": true,
