@@ -23,10 +23,11 @@
     "laravel/framework": "^11|^12|^13"
   },
   "require-dev": {
-    "laravel/pint": "^1.29",
+    "infection/infection": "^0.35.6",
+    "laravel/pint": "^1",
     "masgeek/composer-scripts": "^0.0.2",
     "orchestra/testbench": "^9.0|^10.0|^11.0",
-    "phpunit/phpunit": "^11.0|^12.0|^13.1.8"
+    "phpunit/phpunit": "^11.0|^12.0|^13.0"
   },
   "autoload": {
     "psr-4": {
@@ -49,13 +50,18 @@
   "prefer-stable": true,
   "scripts": {
     "test": "vendor/bin/phpunit --no-coverage",
-    "test:coverage": "vendor/bin/phpunit"
+    "test:coverage": [
+      "@putenv XDEBUG_MODE=coverage",
+      "@php vendor/bin/phpunit --coverage-text"
+    ],
+    "coverage:badge": "@php vendor/bin/phpunit --coverage-clover coverage/clover.xml"
   },
   "config": {
     "optimize-autoloader": true,
     "preferred-install": "dist",
     "sort-packages": true,
     "allow-plugins": {
+      "infection/extension-installer": true,
       "masgeek/composer-scripts": true
     }
   }

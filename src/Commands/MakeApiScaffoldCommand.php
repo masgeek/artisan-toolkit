@@ -6,24 +6,36 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 use Throwable;
 
 class MakeApiScaffoldCommand extends Command
 {
     protected $signature = 'make:api-scaffold
-                            {name : Base name, e.g. Currency or StarchFactory}
-                            {--model= : Model class name (defaults to {name})}
-                            {--prefix= : URL prefix override, e.g. starch-factories (defaults to kebab-plural of name)}
-                            {--force : Overwrite existing files}
-                            {--no-route : Skip automatic route registration}';
+                                {name? : Base name, e.g. Currency or StarchFactory}
+                                {--model= : Model class name (defaults to {name})}
+                                {--prefix= : URL prefix override, e.g. starch-factories (defaults to kebab-plural of name)}
+                                {--force : Overwrite existing files}
+                                {--no-route : Skip automatic route registration}';
 
     protected $description = 'Scaffold an API controller, repository, resource, and resource collection for a given name';
 
     public function handle(): int
     {
-        $name = Str::studly($this->argument('name'));
+        $nameArg = $this->argument('name');
+
+        if (! $nameArg) {
+            $nameArg = $this->ask('What is the name of the API scaffold?');
+            if (! $nameArg) {
+                $this->error('The name argument is required.');
+                return self::FAILURE;
+            }
+        }
+
+        $name = Str::studly($nameArg);
         $model = Str::studly($this->option('model') ?: $name);
         $force = $this->option('force');
+
 
         $this->line("Scaffolding <info>{$name}</info> (model: <info>{$model}</info>)...");
 
@@ -74,6 +86,12 @@ class MakeApiScaffoldCommand extends Command
     private function registerRoute(string $name, string $prefix): void
     {
         $routesFile = base_path('routes/api.php');
+
+        if (! file_exists($routesFile)) {
+            $this->warn('  routes/api.php not found. In Laravel 11+, run "php artisan install:api" to create it.');
+            return;
+        }
+
         $contents = file_get_contents($routesFile);
         $controller = "\\App\\Http\\Controllers\\Api\\{$name}Controller";
 
@@ -85,28 +103,29 @@ class MakeApiScaffoldCommand extends Command
 
 ROUTE;
 
-        // Insert before the closing }); of the throttle:120,1 group.
-        // The anchor is the last }); before the mutating-endpoints comment.
+        // Insertion strategy:
+        // 1. If the "mutating-endpoints" anchor exists, use it (legacy/specific layout).
+        // 2. Otherwise, append to the end of the file (standard for new Laravel 11+ installs).
         $anchor = "\n});\n\n// Mutating";
 
-        if (! str_contains($contents, $anchor)) {
-            $this->warn('  Could not find insertion point in routes/api.php — add the route manually.');
-            $this->line("  Route block:\n{$routeBlock}");
+        if (str_contains($contents, $anchor)) {
+            if (str_contains($contents, "v1/{$prefix}")) {
+                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+                return;
+            }
 
-            return;
+            $updated = str_replace($anchor, "\n".$routeBlock."});\n\n// Mutating", $contents);
+            file_put_contents($routesFile, $updated);
+            $this->info("  Route:   GET /v1/{$prefix} registered in routes/api.php");
+        } else {
+            if (str_contains($contents, "v1/{$prefix}")) {
+                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+                return;
+            }
+
+            file_put_contents($routesFile, $contents . $routeBlock);
+            $this->info("  Route:   GET /v1/{$prefix} appended to routes/api.php");
         }
-
-        // Guard against duplicate registration
-        if (str_contains($contents, "v1/{$prefix}")) {
-            $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
-
-            return;
-        }
-
-        $updated = str_replace($anchor, "\n".$routeBlock."});\n\n// Mutating", $contents);
-        file_put_contents($routesFile, $updated);
-
-        $this->info("  Route:   GET /v1/{$prefix} registered in routes/api.php");
     }
 
     /**
@@ -114,22 +133,28 @@ ROUTE;
      */
     private function buildFiles(string $name, string $model): array
     {
+        $requestName = "{$name}Request";
+
         return [
-            "Http/Controllers/Api/{$name}Controller.php" => [
-                app_path("Http/Controllers/Api/{$name}Controller.php"),
+            "{$name}Controller.php" => [
+                GeneratorPath::to('api_controllers', 'app/Http/Controllers/Api')."/{$name}Controller.php",
                 $this->controllerStub($name, $model),
             ],
-            "Repositories/{$name}Repo.php" => [
-                app_path("Repositories/{$name}Repo.php"),
+            "{$name}Repo.php" => [
+                GeneratorPath::to('repositories', 'app/Repositories')."/{$name}Repo.php",
                 $this->repoStub($name, $model),
             ],
-            "Http/Resources/{$name}Resource.php" => [
-                app_path("Http/Resources/{$name}Resource.php"),
+            "{$name}Resource.php" => [
+                GeneratorPath::to('resources', 'app/Http/Resources')."/{$name}Resource.php",
                 $this->resourceStub($name, $model),
             ],
-            "Http/Resources/Collections/{$name}ResourceCollection.php" => [
-                app_path("Http/Resources/Collections/{$name}ResourceCollection.php"),
+            "{$name}ResourceCollection.php" => [
+                GeneratorPath::to('resource_collections', 'app/Http/Resources/Collections')."/{$name}ResourceCollection.php",
                 $this->collectionStub($name),
+            ],
+            "{$requestName}.php" => [
+                GeneratorPath::to('requests', 'app/Http/Requests')."/{$requestName}.php",
+                $this->requestStub($name, $model),
             ],
         ];
     }
@@ -140,20 +165,22 @@ ROUTE;
 
     private function controllerStub(string $name, string $model): string
     {
-        $repoClass = "App\\Repositories\\{$name}Repo";
-        $collectionClass = "App\\Http\\Resources\\Collections\\{$name}ResourceCollection";
+        $namespace = GeneratorPath::namespaceFor('api_controllers', 'app/Http/Controllers/Api');
+        $repoNamespace = GeneratorPath::namespaceFor('repositories', 'app/Repositories');
+        $collectionNamespace = GeneratorPath::namespaceFor('resource_collections', 'app/Http/Resources/Collections');
+        $repoClass = "{$repoNamespace}\\{$name}Repo";
+        $collectionClass = "{$collectionNamespace}\\{$name}ResourceCollection";
         $repoVar = lcfirst($name).'Repo';
-        $modelVar = lcfirst($name);
 
         return <<<PHP
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace {$namespace};
 
-use App\Http\Concerns\HasPaginationParams;
-use App\Http\Controllers\Controller;
 use {$collectionClass};
 use {$repoClass};
+use App\Http\Concerns\HasPaginationParams;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class {$name}Controller extends Controller
@@ -184,17 +211,20 @@ PHP;
 
     private function repoStub(string $name, string $model): string
     {
+        $namespace = GeneratorPath::namespaceFor('repositories', 'app/Repositories');
+        $baseClass = $this->baseClass('repository', 'App\\Repositories\\BaseRepo');
+        $baseShort = class_basename($baseClass);
+        $modelClass = GeneratorPath::modelClass($model);
+
         return <<<PHP
 <?php
 
-namespace App\Repositories;
+namespace {$namespace};
 
-use App\Models\\{$model};
+use {$baseClass};
+use {$modelClass};
 
-/**
- * @extends BaseRepo<{$model}>
- */
-class {$name}Repo extends BaseRepo
+class {$name}Repo extends {$baseShort}
 {
     protected function model(): string
     {
@@ -206,6 +236,11 @@ PHP;
 
     private function resourceStub(string $name, string $model): string
     {
+        $namespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $baseClass = $this->baseClass('resource', 'Illuminate\\Http\\Resources\\Json\\JsonResource');
+        $baseShort = class_basename($baseClass);
+        $modelClass = GeneratorPath::modelClass($model);
+
         $fields = $this->getFillableFields($model);
         $dateFields = $this->getDateFields($model);
         $fieldLines = $this->buildFieldLines($fields, $dateFields);
@@ -213,15 +248,16 @@ PHP;
         return <<<PHP
 <?php
 
-namespace App\Http\Resources;
+namespace {$namespace};
 
-use App\Models\\{$model};
+use {$baseClass};
+use {$modelClass};
 use Illuminate\Http\Request;
 
 /**
  * @mixin {$model}
  */
-class {$name}Resource extends BaseJsonResource
+class {$name}Resource extends {$baseShort}
 {
     public function toArray(Request \$request): array
     {
@@ -235,12 +271,16 @@ PHP;
 
     private function collectionStub(string $name): string
     {
+        $namespace = GeneratorPath::namespaceFor('resource_collections', 'app/Http/Resources/Collections');
+        $resourceNamespace = GeneratorPath::namespaceFor('resources', 'app/Http/Resources');
+        $resourceClass = "{$resourceNamespace}\\{$name}Resource";
+
         return <<<PHP
 <?php
 
-namespace App\Http\Resources\Collections;
+namespace {$namespace};
 
-use App\Http\Resources\\{$name}Resource;
+use {$resourceClass};
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
@@ -256,13 +296,59 @@ class {$name}ResourceCollection extends ResourceCollection
 PHP;
     }
 
+    /**
+     * Resolve a configured base class FQCN for generated stubs.
+     */
+    private function baseClass(string $key, string $default): string
+    {
+        $class = config("artisan-toolkit.base_classes.{$key}");
+
+        return is_string($class) && $class !== '' ? trim($class, '\\') : $default;
+    }
+
+    private function requestStub(string $name, string $model): string
+    {
+        $namespace = GeneratorPath::namespaceFor('requests', 'app/Http/Requests');
+        $fields = $this->getFillableFields($model);
+        $rules = [];
+
+        foreach ($fields as $field) {
+            $rules[] = "            '$field' => ['nullable', 'string'],";
+        }
+
+        $rulesBlock = empty($rules) ? "            // No fillable fields found in $model" : implode("\n", $rules);
+
+        return <<<PHP
+<?php
+
+namespace {$namespace};
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class {$name}Request extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+{$rulesBlock}
+        ];
+    }
+}
+PHP;
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
     private function getFillableFields(string $model): array
     {
-        $modelClass = "App\\Models\\{$model}";
+        $modelClass = "App\\Models\\$model";
 
         if (! class_exists($modelClass)) {
             return [];
@@ -279,7 +365,7 @@ PHP;
 
     private function getDateFields(string $model): array
     {
-        $modelClass = "App\\Models\\{$model}";
+        $modelClass = "App\\Models\\$model";
 
         if (! class_exists($modelClass)) {
             return [];
@@ -315,10 +401,10 @@ PHP;
         return collect($fields)
             ->map(function ($field) use ($dateFields) {
                 if (in_array($field, $dateFields, true)) {
-                    return "            '{$field}' => \$this->formatDate(\$this->{$field}),";
+                    return "            '$field' => \$this->formatDate(\$this->$field),";
                 }
 
-                return "            '{$field}' => \$this->{$field},";
+                return "            '$field' => \$this->$field,";
             })
             ->implode("\n");
     }

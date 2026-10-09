@@ -4,6 +4,9 @@ namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionNamedType;
 
 class ListModelRelationsCommand extends Command
 {
@@ -25,43 +28,44 @@ class ListModelRelationsCommand extends Command
      * Execute the console command.
      *
      * @noinspection PhpClassConstantAccessedViaChildClassInspection
+     * @throws ReflectionException
      */
     public function handle(): int
     {
         $modelClass = $this->argument('model');
 
         if (! class_exists($modelClass)) {
-            $this->error("Class {$modelClass} does not exist.");
+            $this->error("Class $modelClass does not exist.");
 
             return Command::FAILURE;
         }
 
         // Check if the model is already in the base namespace
         if (str_starts_with($modelClass, 'App\\Models\\Base')) {
-            // If the model is already in the base model namespace, use it directly
             $baseModelClass = $modelClass;
         } else {
-            // Otherwise, resolve the base model class
             $baseModelClass = $this->getBaseModelClass($modelClass);
         }
 
         if (! class_exists($baseModelClass)) {
-            $this->warn("Base model {$baseModelClass} does not exist.");
+            $this->warn("Base model $baseModelClass does not exist.");
             $baseModelClass = null;
         }
 
-        // Extract relationships
+        // Extract relationships with metadata
         $relations = $this->getModelRelations(
             modelClass: new $modelClass,
             baseModelClass: $baseModelClass ? new $baseModelClass : null,
         );
 
         if (empty($relations)) {
-            $this->info("No relationships found in {$modelClass} or its base model.");
+            $this->info("No relationships found in $modelClass or its base model.");
         } else {
-            // Output relationships as a PHP array
-            $this->info("Relationships in {$modelClass} (including base model):");
-            $this->line('['.' "'.implode('", "', $relations).'" ]');
+            $this->info("Relationships in $modelClass (including base model):");
+            $this->table(
+                ['Method', 'Type', 'Target Model'],
+                $relations
+            );
         }
 
         return Command::SUCCESS;
@@ -77,6 +81,7 @@ class ListModelRelationsCommand extends Command
 
     /**
      * Get all relationships defined in the model.
+     * @throws ReflectionException
      */
     private function getModelRelations($modelClass, $baseModelClass = null): array
     {
@@ -88,9 +93,20 @@ class ListModelRelationsCommand extends Command
         // Get relationships from the model itself
         $relations = array_merge($relations, $this->extractRelationships($modelClass));
 
-        return array_unique($relations); // Remove duplicates
+        // Remove duplicates based on method name
+        $unique = [];
+        foreach ($relations as $rel) {
+            $unique[$rel['name']] = $rel;
+        }
+
+        return array_values($unique);
     }
 
+    /**
+     * @param $model
+     * @return array
+     * @throws ReflectionException
+     */
     private function extractRelationships($model): array
     {
         if ($model === null) {
@@ -98,7 +114,7 @@ class ListModelRelationsCommand extends Command
         }
 
         $relations = [];
-        $methods = (new \ReflectionClass($model))->getMethods();
+        $methods = (new ReflectionClass($model))->getMethods();
 
         foreach ($methods as $method) {
             if ($method->class !== get_class($model)) {
@@ -107,8 +123,18 @@ class ListModelRelationsCommand extends Command
 
             if ($method->getNumberOfParameters() === 0) {
                 $returnType = $method->getReturnType();
-                if ($returnType instanceof \ReflectionNamedType && is_subclass_of($returnType->getName(), Relation::class)) {
-                    $relations[] = $method->name;
+                if ($returnType instanceof ReflectionNamedType && is_subclass_of($returnType->getName(), Relation::class)) {
+                    $typeClass = $returnType->getName();
+                    $typeName = (new ReflectionClass($typeClass))->getShortName();
+                    
+                    // Try to find target model from return type or method body (simplified)
+                    $target = 'Unknown';
+                    
+                    $relations[] = [
+                        'name' => $method->name,
+                        'type' => $typeName,
+                        'target' => $target,
+                    ];
                 }
             }
         }

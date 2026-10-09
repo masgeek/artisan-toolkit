@@ -12,14 +12,16 @@ class RotateAppKey extends Command
     protected $name = 'key:generate';
 
     protected $signature = 'key:generate
-                    {--new : New application setup — skip rotation, re-encryption, and model checks}
-                    {--show : Display the key instead of modifying files}
-                    {--force : Force the operation to run when in production}
-                    {--no-env-file : Skip writing to the .env file (useful in Docker)}
-                    {--reverse : Roll back key rotations using previous keys}
-                    {--steps=1 : Number of previous keys to roll back when using --reverse}';
+                        {--new : New application setup — skip rotation, re-encryption, and model checks}
+                        {--show : Display the key instead of modifying files}
+                        {--force : Force the operation to run when in production}
+                        {--no-env-file : Skip writing to the .env file (useful in Docker)}
+                        {--reverse : Roll back key rotations using previous keys}
+                        {--steps=1 : Number of previous keys to roll back when using --reverse}
+                        {--apply : Execute the actual rotation (defaults to dry-run)}';
 
     protected $description = 'Set the application key, rotate old key to APP_PREVIOUS_KEYS, and re-encrypt configured model fields';
+
 
     public function handle(): int
     {
@@ -45,6 +47,10 @@ class RotateAppKey extends Command
             return Command::FAILURE;
         }
 
+        if (! $this->option('apply')) {
+            return $this->dryRun();
+        }
+
         if ($this->option('reverse')) {
             return $this->reverse($currentKey);
         }
@@ -54,6 +60,34 @@ class RotateAppKey extends Command
         }
 
         return $this->rotate($currentKey, $cipher);
+    }
+
+
+    /**
+     * Preview the re-encryption process without making changes.
+     */
+    private function dryRun(): int
+    {
+        $this->info('--- Dry Run: Key Rotation Preview ---');
+        $modelsToProcess = config('artisan-toolkit.encrypted_models', []);
+        $total = 0;
+
+        foreach ($modelsToProcess as $modelClass => $fields) {
+            if (! class_exists($modelClass)) {
+                $this->warn("Skipping [{$modelClass}]: Class not found.");
+                continue;
+            }
+
+            $count = $modelClass::count();
+            $this->line("Model: <info>{$modelClass}</info> | Fields: <comment>" . implode(', ', (array)$fields) . "</comment> | Records: <info>{$count}</info>");
+            $total += $count;
+        }
+
+        $this->newLine();
+        $this->info("Total records to be re-encrypted: {$total}");
+        $this->line('Run without --dry-run to execute rotation.');
+
+        return Command::SUCCESS;
     }
 
     /**
@@ -432,6 +466,11 @@ class RotateAppKey extends Command
     private function processModelInChunks(string $modelClass, array $fields): void
     {
         $count = 0;
+        $total = $modelClass::count();
+
+        if ($total > 0) {
+            $this->output->progressStart($total);
+        }
 
         $modelClass::chunk(100, function ($records) use ($fields, &$count) {
             DB::transaction(function () use ($records, $fields, &$count) {
@@ -442,7 +481,6 @@ class RotateAppKey extends Command
                         $value = $record->getAttribute($field);
 
                         if ($value !== null) {
-                            // Re-assigning field triggers Eloquent 'encrypted' cast with NEW APP_KEY
                             $record->setAttribute($field, $value);
                             $dirty = true;
                         }
@@ -454,7 +492,12 @@ class RotateAppKey extends Command
                     }
                 }
             });
+            $this->output->progressAdvance(count($records));
         });
+
+        if ($total > 0) {
+            $this->output->progressFinish();
+        }
 
         $this->info(" -> {$count} records updated for [{$modelClass}].");
     }

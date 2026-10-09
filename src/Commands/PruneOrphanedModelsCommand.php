@@ -11,7 +11,7 @@ use Symfony\Component\Finder\Finder;
 class PruneOrphanedModelsCommand extends Command
 {
     protected $signature = 'model:prune-orphaned
-                            {--path=* : One or more directories to scan (defaults to artisan-toolkit.model_scan_paths config)}
+                            {--path=* : One or more directories to scan (defaults to artisan-toolkit.paths.model_scan config)}
                             {--search=app : Directory to search for references (relative to base path, or absolute)}
                             {--delete : Delete the orphaned model files}
                             {--force : Skip confirmation prompt when deleting}';
@@ -26,11 +26,11 @@ class PruneOrphanedModelsCommand extends Command
     public function handle(): int
     {
         $scanPaths = $this->option('path') ?: config(
-            'artisan-toolkit.model_scan_paths',
+            'artisan-toolkit.paths.model_scan',
             ['app/Models', 'app/Models/Base']
         );
 
-        $searchPath = $this->resolvePath($this->option('search'));
+        $searchPath = $this->resolvePath($this->option('search') ?: config('artisan-toolkit.prune_search_root', 'app'));
 
         $validPaths = $this->resolveValidPaths($scanPaths);
 
@@ -198,6 +198,7 @@ class PruneOrphanedModelsCommand extends Command
         $shortName = class_basename($class);
         $refs = [];
 
+        // Search PHP files
         foreach ((new Finder)->in($searchPath)->name('*.php')->files() as $file) {
             if ($file->getRealPath() === $modelPath) {
                 continue;
@@ -211,6 +212,25 @@ class PruneOrphanedModelsCommand extends Command
             }
         }
 
-        return $refs;
+        // Search Blade templates
+        foreach ((new Finder)->in($searchPath)->name('*.blade.php')->files() as $file) {
+            $content = file_get_contents($file->getRealPath());
+
+            if (preg_match('/\b'.preg_quote($shortName, '/').'\\b/', $content) ||
+                str_contains($content, $class)) {
+                $refs[] = $file->getRealPath();
+            }
+        }
+
+        // Search JSON files
+        foreach ((new Finder)->in($searchPath)->name('*.json')->files() as $file) {
+            $content = file_get_contents($file->getRealPath());
+
+            if (str_contains($content, $shortName) || str_contains($content, $class)) {
+                $refs[] = $file->getRealPath();
+            }
+        }
+
+        return array_unique($refs);
     }
 }

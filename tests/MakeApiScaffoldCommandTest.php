@@ -17,6 +17,7 @@ class MakeApiScaffoldCommandTest extends TestCase
             'repo' => app_path('Repositories'),
             'resource' => app_path('Http/Resources'),
             'collection' => app_path('Http/Resources/Collections'),
+            'request' => app_path('Http/Requests'),
         ];
 
         foreach ($this->paths as $path) {
@@ -31,12 +32,22 @@ class MakeApiScaffoldCommandTest extends TestCase
             File::deleteDirectory($path);
         }
         File::deleteDirectory(app_path('Http/Controllers'));
+        File::deleteDirectory(app_path('Http/Requests'));
         File::deleteDirectory(app_path('Repositories'));
         if (File::exists(base_path('routes/api.php'))) {
             File::delete(base_path('routes/api.php'));
         }
         Schema::dropIfExists('scaffold_test_models');
         parent::tearDown();
+    }
+
+    private function assertPhpSyntax(string $filePath): void
+    {
+        $output = [];
+        $resultCode = 0;
+        exec("php -l " . escapeshellarg($filePath), $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, "PHP syntax error in {$filePath}: " . implode("\n", $output));
     }
 
     public function test_it_creates_all_scaffold_files(): void
@@ -47,9 +58,16 @@ class MakeApiScaffoldCommandTest extends TestCase
         ])->assertSuccessful();
 
         $this->assertFileExists($this->paths['controller'].'/CurrencyController.php');
+        $this->assertPhpSyntax($this->paths['controller'].'/CurrencyController.php');
+
         $this->assertFileExists($this->paths['repo'].'/CurrencyRepo.php');
+        $this->assertPhpSyntax($this->paths['repo'].'/CurrencyRepo.php');
+
         $this->assertFileExists($this->paths['resource'].'/CurrencyResource.php');
+        $this->assertPhpSyntax($this->paths['resource'].'/CurrencyResource.php');
+
         $this->assertFileExists($this->paths['collection'].'/CurrencyResourceCollection.php');
+        $this->assertPhpSyntax($this->paths['collection'].'/CurrencyResourceCollection.php');
     }
 
     public function test_it_creates_scaffold_with_custom_model(): void
@@ -87,6 +105,7 @@ class MakeApiScaffoldCommandTest extends TestCase
         File::put($this->paths['repo'].'/CurrencyRepo.php', '<?php');
         File::put($this->paths['resource'].'/CurrencyResource.php', '<?php');
         File::put($this->paths['collection'].'/CurrencyResourceCollection.php', '<?php');
+        File::put($this->paths['request'].'/CurrencyRequest.php', '<?php');
 
         $this->artisan('make:api-scaffold', [
             'name' => 'Currency',
@@ -165,16 +184,30 @@ class MakeApiScaffoldCommandTest extends TestCase
         $this->assertEquals(1, substr_count($routesContent, 'v1/currencies'));
     }
 
-    public function test_it_warns_on_missing_route_anchor(): void
+    public function test_it_appends_route_when_no_anchor_is_present(): void
     {
         File::ensureDirectoryExists(base_path('routes'));
-        File::put(base_path('routes/api.php'), "<?php\n\n// No mutating anchor in this file");
+        File::put(base_path('routes/api.php'), "<?php\n\n// Standard Laravel 11+ api routes");
 
         $this->artisan('make:api-scaffold', ['name' => 'Currency'])
             ->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertStringNotContainsString('v1/currencies', $routesContent);
+        $this->assertStringContainsString('v1/currencies', $routesContent);
+        $this->assertStringContainsString('CurrencyController::class', $routesContent);
+    }
+
+    public function test_it_warns_when_routes_file_is_missing(): void
+    {
+        File::ensureDirectoryExists(base_path('routes'));
+
+        if (File::exists(base_path('routes/api.php'))) {
+            File::delete(base_path('routes/api.php'));
+        }
+
+        $this->artisan('make:api-scaffold', ['name' => 'Currency'])
+            ->assertSuccessful()
+            ->expectsOutputToContain('install:api');
     }
 
     public function test_it_generates_resource_stub_with_placeholder_fields(): void
@@ -186,7 +219,15 @@ class MakeApiScaffoldCommandTest extends TestCase
 
         $resourceContent = File::get($this->paths['resource'].'/CurrencyResource.php');
         $this->assertStringContainsString("// 'id' => \$this->id,", $resourceContent);
-        $this->assertStringContainsString('class CurrencyResource extends BaseJsonResource', $resourceContent);
+        $this->assertStringContainsString(
+            'class CurrencyResource extends JsonResource',
+            $resourceContent,
+        );
+        // The base class must be imported, not referenced as a bare local name.
+        $this->assertStringContainsString(
+            'use Illuminate\Http\Resources\Json\JsonResource;',
+            $resourceContent,
+        );
     }
 
     public function test_it_generates_correct_repo_stub(): void
@@ -200,7 +241,9 @@ class MakeApiScaffoldCommandTest extends TestCase
         $repoContent = File::get($this->paths['repo'].'/CurrencyRepo.php');
         $this->assertStringContainsString('class CurrencyRepo extends BaseRepo', $repoContent);
         $this->assertStringContainsString('return Currency::class;', $repoContent);
-        $this->assertStringContainsString('@extends BaseRepo<Currency>', $repoContent);
+        // Base repository and model must both be imported.
+        $this->assertStringContainsString('use App\Repositories\BaseRepo;', $repoContent);
+        $this->assertStringContainsString('use App\Models\Currency;', $repoContent);
     }
 
     public function test_it_generates_correct_collection_stub(): void

@@ -1,59 +1,52 @@
 # AGENTS.md — masgeek/artisan-toolkit
 
-## Quick start
+## Commands
 
 ```bash
-composer install
-composer test                          # phpunit, no coverage
-composer test:coverage                 # phpunit with coverage (threshold: 70%)
-vendor/bin/phpunit --filter test_name  # single test
-vendor/bin/phpunit tests/SchemaDumpCommandTest.php  # single file
+composer test                 # phpunit, no coverage
+composer test:coverage        # sets XDEBUG_MODE=coverage itself; needs the extension installed
+vendor/bin/phpunit --filter X # single test
+vendor/bin/pint               # lint/fix
 ```
+
+Coverage threshold in CI is 70%.
 
 ## Architecture
 
-- Laravel library (not a full app). Tested via **Orchestra Testbench** with `testing` DB (SQLite in-memory, `APP_KEY` in phpunit.xml.dist).
-- `ArtisanToolkitServiceProvider` merges `config/artisan-toolkit.php` and registers commands in two groups:
-  - `overrides` — classes that replace a built-in Artisan command (e.g. `schema:dump`)
-  - `commands` — brand-new commands (e.g. `make:enum`, `model:relations`)
-- Setting a config entry to `false` or omitting it disables the command.
-- Namespace: `Masgeek\ArtisanToolkit\` → `src/`, tests → `Masgeek\ArtisanToolkit\Tests\` → `tests/`.
-- PHP 8.2+, Laravel 11–13.
+- Laravel **library**, not an app. No `artisan` binary here — tests run via **Orchestra Testbench** (`DB_CONNECTION=testing`, SQLite in-memory, `APP_KEY` set in `phpunit.xml.dist`).
+- `ArtisanToolkitServiceProvider` does **not** register commands straight from config. It merges its `$defaults` arrays with the user's published config:
+  ```php
+  array_merge($defaults['commands'], config('artisan-toolkit.commands', []))
+  ```
+  So new commands auto-register for existing users, user `false` wins, and user class replacements win.
 
-## Adding a new command
+## Gotchas that will bite you
 
-1. Create class in `src/Commands/` (namespace `Masgeek\ArtisanToolkit\Commands`).
-2. Add to `config/artisan-toolkit.php` under `overrides` or `commands`.
-3. Register in `tests/TestCase.php` `defineEnvironment()` so tests can resolve it.
+- **A new command must be registered in TWO places**: `config/artisan-toolkit.php` (`commands`) **and** `src/ArtisanToolkitServiceProvider.php` (`$defaults['commands']`). Missing the provider entry means users with a published config never get the command.
+- **`tests/TestCase.php` `defineEnvironment()`** must also list it, or tests can't resolve it.
+- **`ConfigDiffCommand` requires the shipped config** (`require __DIR__.'/../../config/artisan-toolkit.php'`) rather than duplicating defaults — that is intentional, do not "clean it up" into a literal array.
+- **`key:generate` is dry-run by default** and needs `--apply` to write. Breaking change from earlier versions.
+- **Heredoc interpolation trap**: `\$this->$repoVar->method()` parses as property access *on the string variable*. Use `{$repoVar}`. This silently emitted `$this->(` into generated code once already.
+- **`ModelFindUnusedCommand` excludes the model's own file** from reference scanning, so a `$fillable` declaration can't mask a dead column. Preserve that.
+- **`MakeRepositoryCommand`, `MakeFullResourceCommand`, `MakeApiScaffoldCommand` resolve paths via `GeneratorPath`** (`src/Support/GeneratorPath.php`) — never call `app_path()` directly in a generator. The helper also derives the namespace from the configured path.
+- **Stubs must `use` their base class and `extends` the short name.** A bare `extends BaseRepo` with no import generates an undefined-class file. `GeneratedCodeSyntaxTest` guards this.
+- Pint fails on a few pre-existing files (`ArtisanToolkitServiceProvider.php`, `MakeApiScaffoldCommand.php`, `MakeApiScaffoldCommandTest.php`). Verify with `git stash` before assuming you introduced it.
 
-## Testing quirks
+## Conventions
 
-- Tests must configure both `artisan-toolkit.overrides` and `artisan-toolkit.commands` in `defineEnvironment()`.
-- Commands that touch filesystem (make:* commands) create files in temp dirs and clean up in `tearDown()`.
-- `SchemaDumpCommandTest` requires a real DB connection (SQLite in-memory via `testing` driver).
-- Coverage reports output to `coverage/` (gitignored).
+- **No hardcoded paths or namespaces.** Read targets from `config('artisan-toolkit.paths.*')` and parents from `config('artisan-toolkit.base_classes.*')`.
+- **Comment every config entry** in `config/artisan-toolkit.php` explaining what consumes it.
+- Tests write to temp dirs and clean up in `tearDown()`.
 
-## CI / Release flow
+## Git
 
-| Event | Action |
-|---|---|
-| Push to any branch | Unit tests (PHP 8.4, SQLite, coverage ≥70%) |
-| PR to `main` or `develop` | Unit tests |
-| Push to `develop` | Auto PR created targeting `main` (via `next-release.yml`) |
-| Push to `main` (tests pass) | Auto bump-tag + GitHub release (via `bump-and-tag.yml`) |
+- Conventional Commits. Breaking changes: `feat!:` **and** a `BREAKING CHANGE:` footer, in an isolated commit.
+- Branches: `main` (stable) ← `develop` (integration).
+- `develop` push auto-PRs to `main`; `main` push auto-tags and releases.
 
-## git & commit conventions
+## Docs
 
-- Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, etc.
-- Split unrelated changes into separate commits — never mix features, fixes, and chores in one commit.
-- Keep descriptions clear and imperative ("add" not "added").
+- `README.md` — end-user docs: every command, option, and config key.
+- `DEVELOPMENT.md` — local setup, path-repo symlink workflow, adding commands, conventions.
 
-### Breaking changes
-
-- Mark with `!` after the type (e.g. `feat!:` or `fix!:`) **and/or** a `BREAKING CHANGE:` footer.
-- Must be isolated in their own commit — never hidden inside a normal commit.
-- Describe what changed, what breaks, and migration steps for downstream users.
-
-### Branches
-
-- `main` (stable) ← `develop` (integration).
+Update both when behaviour changes.

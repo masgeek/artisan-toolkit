@@ -16,7 +16,7 @@ class MakeFullResourceCommandTest extends TestCase
     {
         parent::setUp();
         $this->resourcesPath = app_path('Http/Resources');
-        $this->collectionsPath = app_path('Http/Resources/Collection');
+        $this->collectionsPath = app_path('Http/Resources/Collections');
 
         File::deleteDirectory($this->resourcesPath);
         File::makeDirectory($this->resourcesPath, 0755, true);
@@ -42,11 +42,14 @@ class MakeFullResourceCommandTest extends TestCase
         $this->assertFileExists($this->resourcesPath.'/UserResource.php');
         $this->assertFileExists($this->collectionsPath.'/UserResourceCollection.php');
 
-        $resourceContent = File::get($this->resourcesPath.'/UserResource.php');
-        $this->assertStringContainsString('class UserResource extends \Illuminate\Http\Resources\Json\JsonResource', $resourceContent);
+$resourceContent = File::get($this->resourcesPath.'/UserResource.php');
+        $this->assertStringContainsString('class UserResource extends JsonResource', $resourceContent);
+        $this->assertStringContainsString('use Illuminate\Http\Resources\Json\JsonResource;', $resourceContent);
 
         $collectionContent = File::get($this->collectionsPath.'/UserResourceCollection.php');
         $this->assertStringContainsString('class UserResourceCollection', $collectionContent);
+        $this->assertStringContainsString('namespace App\Http\Resources\Collections;', $collectionContent);
+        $this->assertStringContainsString('use App\Http\Resources\UserResource;', $collectionContent);
     }
 
     public function test_it_infers_model_from_resource_name(): void

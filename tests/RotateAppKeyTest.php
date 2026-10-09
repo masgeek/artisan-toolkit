@@ -34,7 +34,7 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $this->assertFileExists($keyFilePath);
@@ -57,7 +57,7 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', null);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $this->assertFileDoesNotExist($keyFilePath);
@@ -73,7 +73,7 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $data = json_decode(File::get($keyFilePath), true);
@@ -90,7 +90,7 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $this->assertFileExists($keyFilePath);
@@ -106,13 +106,13 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $firstRun = json_decode(File::get($keyFilePath), true);
         $firstKey = $firstRun['current_key'];
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $secondRun = json_decode(File::get($keyFilePath), true);
@@ -130,13 +130,13 @@ class RotateAppKeyTest extends TestCase
         ]);
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $rotatedData = json_decode(File::get($keyFilePath), true);
         $rotatedKey = $rotatedData['current_key'];
 
-        $this->artisan('key:generate', ['--reverse' => true, '--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--reverse' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $reversedData = json_decode(File::get($keyFilePath), true);
@@ -155,7 +155,7 @@ class RotateAppKeyTest extends TestCase
         config()->set('artisan-toolkit.key_storage_path', $keyFilePath);
         config()->set('app.previous_keys', []);
 
-        $this->artisan('key:generate', ['--force' => true, '--no-env-file' => true])
+        $this->artisan('key:generate', ['--apply' => true, '--force' => true, '--no-env-file' => true])
             ->assertSuccessful();
 
         $data = json_decode(File::get($keyFilePath), true);
