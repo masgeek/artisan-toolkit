@@ -198,6 +198,7 @@ class PruneOrphanedModelsCommand extends Command
         $shortName = class_basename($class);
         $refs = [];
 
+        // Search PHP files
         foreach ((new Finder)->in($searchPath)->name('*.php')->files() as $file) {
             if ($file->getRealPath() === $modelPath) {
                 continue;
@@ -211,6 +212,25 @@ class PruneOrphanedModelsCommand extends Command
             }
         }
 
-        return $refs;
+        // Search Blade templates
+        foreach ((new Finder)->in($searchPath)->name('*.blade.php')->files() as $file) {
+            $content = file_get_contents($file->getRealPath());
+
+            if (preg_match('/\b'.preg_quote($shortName, '/').'\\b/', $content) ||
+                str_contains($content, $class)) {
+                $refs[] = $file->getRealPath();
+            }
+        }
+
+        // Search JSON files
+        foreach ((new Finder)->in($searchPath)->name('*.json')->files() as $file) {
+            $content = file_get_contents($file->getRealPath());
+
+            if (str_contains($content, $shortName) || str_contains($content, $class)) {
+                $refs[] = $file->getRealPath();
+            }
+        }
+
+        return array_unique($refs);
     }
 }
