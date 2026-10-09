@@ -1,11 +1,18 @@
 <?php
 
+/**
+ * Copyright (c) Munywele Consulting LTD. All rights reserved.
+ * https://munywele.co.ke
+ */
+
 declare(strict_types=1);
 
 namespace Masgeek\ArtisanToolkit\Commands;
 
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Helper\TableSeparator;
 use Symfony\Component\Console\Terminal;
 
 final class ConfigDiffCommand extends Command
@@ -13,25 +20,56 @@ final class ConfigDiffCommand extends Command
     /** Hard cap so the table never overflows narrow terminals. */
     private const MAX_WIDTH = 120;
 
-    /** @var list<array{0: string, 1: string, 2: string}> */
+    private const STATUS_WIDTH = 10;
+
+    /** Keys whose string values are masked in output. */
+    private const SENSITIVE = '/(^|_)(key|keys|secret|secrets|token|tokens|password|passwords|passwd|credential|credentials)$/i';
+
+    /**
+     * Keys that look sensitive but hold non-secret data (e.g. a file path) and
+     * must stay visible in the diff.
+     */
+    private const SENSITIVE_EXEMPT = ['key_storage_path'];
+
+    /** @var array<string, string> status => console color */
+    private const STATUS_COLORS = [
+        'added' => 'green',
+        'extended' => 'green',
+        'modified' => 'yellow',
+        'reordered' => 'yellow',
+        'trimmed' => 'red',
+        'disabled' => 'red',
+        'unset' => 'red',
+    ];
+
+    /** @var list<array{0: string, 1: string, 2: string, 3: string}> */
     private array $rows = [];
 
-    protected $signature = 'config:diff';
+    /** @var array<string, int> */
+    private array $counts = [];
+
+    protected $signature = 'config:diff {--fail : Exit with a failure code when differences are found}';
 
     protected $description = 'Compare published config with package defaults';
 
     public function handle(): int
     {
         $this->newLine();
-        $this->info(' <fg=cyan>Toolkit Configuration Diff</>');
-        $this->line('Comparing <comment>config/artisan-toolkit.php</comment> with package defaults.');
+        $this->line(' <options=bold;fg=cyan>Toolkit Configuration Diff</>');
+        $this->line(' Comparing <comment>config/artisan-toolkit.php</comment> with package defaults.');
         $this->newLine();
 
-        // Load the package's shipped defaults directly so this command can never
-        // drift from config/artisan-toolkit.php.
-        $defaults = require __DIR__.'/../../config/artisan-toolkit.php';
-
+        // Load the shipped defaults directly so this command can never drift
+        // from config/artisan-toolkit.php.
+        $defaultsFile = __DIR__.'/../../config/artisan-toolkit.php';
+        $defaults = is_file($defaultsFile) ? require $defaultsFile : null;
         $userConfig = config('artisan-toolkit');
+
+        if (! is_array($defaults)) {
+            $this->error('Package default config could not be loaded.');
+
+            return self::FAILURE;
+        }
 
         if (! is_array($userConfig)) {
             $this->error('Config not found. Publish it first: php artisan vendor:publish --tag=artisan-toolkit-config');
@@ -40,137 +78,230 @@ final class ConfigDiffCommand extends Command
         }
 
         $this->rows = [];
+        $this->counts = [];
 
-        foreach ($defaults as $key => $defaultValue) {
-            $this->diff((string) $key, $defaultValue, $userConfig[$key] ?? null);
-        }
+        $this->diffMap([], $defaults, $userConfig);
 
-        if (empty($this->rows)) {
-            $this->info('Config is identical to defaults. <fg=green>OK</>');
+        if ($this->rows === []) {
+            $this->line(' <fg=green>✔ Config is identical to defaults.</>');
             $this->newLine();
 
             return self::SUCCESS;
         }
 
         $this->renderTable();
-        $this->newLine();
+        $this->renderSummary();
 
-        return self::SUCCESS;
+        return $this->option('fail') ? self::FAILURE : self::SUCCESS;
     }
 
     /**
-     * Recursively diff a value so nested maps and list items each get their own row.
+     * Diff two associative maps key by key, including keys that exist on only one side.
+     *
+     * @param  list<string>  $path
+     * @param  array<array-key, mixed>  $default
+     * @param  array<array-key, mixed>  $user
      */
-    private function diff(string $path, mixed $default, mixed $user): void
+    private function diffMap(array $path, array $default, array $user): void
     {
-        if (is_array($default)) {
-            $this->diffArray($path, $default, $user);
+        foreach (array_keys($default + $user) as $key) {
+            $this->diff(
+                [...$path, (string) $key],
+                $default[$key] ?? null,
+                $user[$key] ?? null,
+                array_key_exists($key, $default),
+                array_key_exists($key, $user),
+            );
+        }
+    }
+
+    /**
+     * @param  list<string>  $path
+     */
+    private function diff(array $path, mixed $default, mixed $user, bool $defaultExists, bool $userExists): void
+    {
+        // Associative maps on both sides: recurse so nested settings get their own row.
+        if (
+            is_array($default) && is_array($user)
+            && ! array_is_list($default) && ! array_is_list($user)
+        ) {
+            $this->diffMap($path, $default, $user);
 
             return;
         }
 
-        if ($default === $user) {
+        if ($defaultExists && $userExists && $default === $user) {
             return;
         }
 
-        $status = 'Modified';
+        $status = $this->status($default, $user, $defaultExists, $userExists);
+        $key = (string) end($path);
 
-        if ($user === null) {
-            $status = '<fg=red>Unset</>';
-        } elseif ($user === false) {
-            $status = '<fg=red>Disabled</>';
-        } elseif (! is_array($default) && ! array_key_exists($this->lastSegment($path), (array) $user)) {
-            $status = '<fg=green>Added</>';
-        }
-
-        $this->rows[] = [$this->label($path, $status), $this->format($default), $this->format($user)];
+        $this->counts[$status] = ($this->counts[$status] ?? 0) + 1;
+        $this->rows[] = [
+            $this->badge($status),
+            $this->label($path),
+            $defaultExists ? $this->format($default, $key) : '<fg=gray>—</>',
+            $userExists ? $this->format($user, $key) : '<fg=gray>—</>',
+        ];
     }
 
-    /**
-     * @param  array<mixed, mixed>  $default
-     */
-    private function diffArray(string $path, array $default, mixed $user): void
+    private function status(mixed $default, mixed $user, bool $defaultExists, bool $userExists): string
     {
-        $user = is_array($user) ? $user : [];
+        if (! $defaultExists || $default === null) {
+            return 'added';
+        }
 
-        // Associative map: recurse per key so nested settings are broken out.
-        if (! array_is_list($default) && ! array_is_list($user)) {
-            foreach (array_unique(array_merge(array_keys($default), array_keys($user))) as $key) {
-                $this->diff($path.'.'.$key, $default[$key] ?? null, $user[$key] ?? null);
+        if (! $userExists || $user === null) {
+            return 'unset';
+        }
+
+        if ($user === false && $default !== false) {
+            return 'disabled';
+        }
+
+        if (is_array($default) && is_array($user) && array_is_list($default) && array_is_list($user)) {
+            if ($default === []) {
+                return 'added';
             }
 
-            return;
+            if ($user === []) {
+                return 'trimmed';
+            }
+
+            $added = array_udiff($user, $default, $this->compare(...));
+            $removed = array_udiff($default, $user, $this->compare(...));
+
+            return match (true) {
+                $added !== [] && $removed === [] => 'extended',
+                $added === [] && $removed !== [] => 'trimmed',
+                $added === [] && $removed === [] => 'reordered',
+                default => 'modified',
+            };
         }
 
-        // Lists are shown as a whole, rendered as an indented JSON block that
-        // flows downward, so item order and nesting stay readable.
-        if ($default === $user) {
-            return;
-        }
-
-        $status = match (true) {
-            ! is_array($user) => '<fg=red>Replaced</>',
-            count($user) > count($default) => '<fg=green>Added to</>',
-            count($user) < count($default) => '<fg=red>Removed from</>',
-            default => 'Modified',
-        };
-
-        $this->rows[] = [$this->label($path, $status), $this->format($default), $this->format($user)];
+        return 'modified';
     }
 
-    private function label(string $path, string $status): string
+    private function compare(mixed $a, mixed $b): int
     {
-        // Shorten any fully qualified class name segment to its basename so
-        // paths such as encrypted_models.App\Models\User stay readable.
-        $segments = array_map(
-            static fn (string $segment): string => str_ends_with($segment, '::class')
-                ? class_basename($segment)
-                : $segment,
-            explode('.', $path),
-        );
-
-        return implode('.', $segments)." <fg=gray>({$status})</>";
+        return $this->fingerprint($a) <=> $this->fingerprint($b);
     }
 
-    private function lastSegment(string $path): string
+    private function fingerprint(mixed $value): string
     {
-        return str_contains($path, '.') ? substr($path, strrpos($path, '.') + 1) : $path;
+        return (string) json_encode($value, JSON_PARTIAL_OUTPUT_ON_ERROR);
+    }
+
+    private function badge(string $status): string
+    {
+        $color = self::STATUS_COLORS[$status] ?? 'default';
+
+        return "<fg={$color}>{$status}</>";
     }
 
     /**
-     * Render the table, constraining it to a readable maximum width.
+     * @param  list<string>  $path
+     */
+    private function label(array $path): string
+    {
+        $segments = array_map(
+            fn (string $segment): string => OutputFormatter::escape($this->shortName($segment)),
+            $path,
+        );
+
+        $last = array_pop($segments);
+        $parent = $segments === [] ? '' : '<fg=gray>'.implode('.', $segments).'.</>';
+
+        return $parent.'<options=bold>'.$last.'</>';
+    }
+
+    /**
+     * Shorten fully qualified class names (App\Models\User) to their basename.
+     */
+    private function shortName(string $value): string
+    {
+        return str_contains($value, '\\') && ! str_contains($value, ' ')
+            ? class_basename($value)
+            : $value;
+    }
+
+    /**
+     * Render the table within a readable maximum width.
      *
      * Only max widths are set (never fixed widths) so Symfony auto-sizes columns
-     * to their content and shrinks gracefully instead of overflowing the terminal.
+     * to their content and shrinks instead of overflowing the terminal.
      */
     private function renderTable(): void
     {
-        $available = min((new Terminal)->getWidth(), self::MAX_WIDTH);
-        $labelWidth = (int) round($available * 0.34);
-        $valueWidth = (int) round($available * 0.33);
+        $columns = 4;
+        $chrome = $columns * 3 + 1; // cell padding + borders
+        $usable = min((new Terminal)->getWidth(), self::MAX_WIDTH) - $chrome - self::STATUS_WIDTH;
+
+        $labelWidth = max(12, (int) round($usable * 0.28));
+        $valueWidth = max(12, (int) floor(($usable - $labelWidth) / 2));
 
         $table = new Table($this->output);
-        $table->setHeaders(['Setting', 'Default Value', 'Your Value']);
+        $table->setStyle('box');
+        $table->setHeaders(['Status', 'Setting', 'Default', 'Yours']);
 
-        foreach ([$labelWidth, $valueWidth, $valueWidth] as $index => $width) {
+        foreach ([self::STATUS_WIDTH, $labelWidth, $valueWidth, $valueWidth] as $index => $width) {
             $table->setColumnMaxWidth($index, $width);
         }
 
+        $previousGroup = null;
+
         foreach ($this->rows as $row) {
+            $group = $this->groupOf($row);
+
+            // Only break between top-level settings; a separator after every row
+            // would swamp multi-line JSON cells in borders.
+            if ($previousGroup !== null && $group !== $previousGroup) {
+                $table->addRow(new TableSeparator);
+            }
+
             $table->addRow($row);
+            $previousGroup = $group;
         }
 
         $table->render();
     }
 
     /**
-     * Format a value. Arrays and maps are rendered as an indented, JSON-style
-     * block that flows downward so nesting and item order stay readable.
+     * The top-level setting a row belongs to (the first segment of its path).
+     *
+     * @param  array{0: string, 1: string, 2: string, 3: string}  $row
      */
-    private function format(mixed $value): string
+    private function groupOf(array $row): string
+    {
+        // Label format is "<parent>.<bold>leaf</>"; strip tags to get the root.
+        $plain = strip_tags($row[1]);
+
+        return str_contains($plain, '.') ? substr($plain, 0, strpos($plain, '.')) : $plain;
+    }
+
+    private function renderSummary(): void
+    {
+        ksort($this->counts);
+
+        $parts = [];
+        foreach ($this->counts as $status => $count) {
+            $parts[] = "{$count} {$status}";
+        }
+
+        $this->newLine();
+        $this->line(' <options=bold>'.array_sum($this->counts).' difference(s)</> <fg=gray>('.implode(', ', $parts).')</>');
+        $this->newLine();
+    }
+
+    /**
+     * Format a value. Arrays render as an indented JSON-style block that flows
+     * downward so nesting and item order stay readable.
+     */
+    private function format(mixed $value, string $key = ''): string
     {
         if (! is_array($value)) {
-            return $this->formatScalar($value);
+            return $this->formatScalar($value, $key);
         }
 
         if ($value === []) {
@@ -178,42 +309,60 @@ final class ConfigDiffCommand extends Command
         }
 
         $isList = array_is_list($value);
-        $lines = [$isList ? '<fg=gray>[' : '<fg=gray>{</>'];
-        $items = [];
+        $pad = '  ';
+        $lines = [$isList ? '<fg=gray>[</>' : '<fg=gray>{</>'];
 
-        foreach ($value as $key => $item) {
-            $rendered = $this->format($item);
+        foreach ($value as $itemKey => $item) {
+            $rendered = str_replace("\n", "\n".$pad, $this->format($item, (string) $itemKey));
+            $prefix = $isList
+                ? ''
+                : '<fg=cyan>'.OutputFormatter::escape($this->shortName((string) $itemKey)).'</>: ';
 
-            if ($isList) {
-                $items[] = '    '.$rendered.',';
-
-                continue;
-            }
-
-            // Config maps command names to fully qualified class names; the
-            // namespace adds noise, so show only the short class name.
-            $label = str_ends_with((string) $key, '::class')
-                ? class_basename((string) $key)
-                : (string) $key;
-
-            $items[] = '    <fg=cyan>'.$label.'</>: '.$rendered.',';
+            $lines[] = $pad.$prefix.$rendered.',';
         }
 
-        $lines = array_merge($lines, $items, [$isList ? '<fg=gray>]</>' : '<fg=gray>}</>']);
+        $lines[] = $isList ? '<fg=gray>]</>' : '<fg=gray>}</>';
 
         return implode("\n", $lines);
     }
 
-    private function formatScalar(mixed $value): string
+    /**
+     * Only treat a string as a class reference when it looks like one, so plain
+     * config values never trigger the autoloader.
+     */
+    private function looksLikeClass(string $value): bool
     {
+        return class_exists($value) && preg_match('/^\\\\?[A-Za-z_\x80-\xff][\w\x80-\xff]*(\\\\[A-Za-z_\x80-\xff][\w\x80-\xff]*)+$/', $value) === 1;
+    }
+
+    private function isSensitive(string $key): bool
+    {
+        $key = strtolower($key);
+
+        if (in_array($key, self::SENSITIVE_EXEMPT, true)) {
+            return false;
+        }
+
+        return preg_match(self::SENSITIVE, $key) === 1;
+    }
+
+    private function formatScalar(mixed $value, string $key): string
+    {
+        if (is_string($value) && $value !== '' && $this->isSensitive($key)) {
+            return '<fg=gray>••••••••</>';
+        }
+
         return match (true) {
             $value === null => '<fg=gray>null</>',
-            $value === false => '<fg=red>false</>',
             $value === true => '<fg=green>true</>',
-            is_array($value) => '<fg=gray>(nested)</>',
-            is_string($value) && str_ends_with($value, '::class') => '<fg=cyan>'.class_basename($value).'</>',
-            is_string($value) => str_replace("\n", ' ', $value),
-            default => (string) $value,
+            $value === false => '<fg=red>false</>',
+            is_int($value), is_float($value) => "<fg=blue>{$value}</>",
+            $value instanceof \UnitEnum => '<fg=cyan>'.OutputFormatter::escape($value::class.'::'.$value->name).'</>',
+            $value instanceof \Closure => '<fg=gray>Closure</>',
+            is_object($value) => '<fg=cyan>'.OutputFormatter::escape(class_basename($value)).'</>',
+            is_string($value) && $this->looksLikeClass($value) => '<fg=cyan>'.OutputFormatter::escape(class_basename($value)).'</>',
+            is_string($value) => '"'.OutputFormatter::escape(str_replace("\n", '\n', $value)).'"',
+            default => '<fg=gray>'.get_debug_type($value).'</>',
         };
     }
 }
