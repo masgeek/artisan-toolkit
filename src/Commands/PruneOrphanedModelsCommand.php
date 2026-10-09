@@ -26,11 +26,11 @@ class PruneOrphanedModelsCommand extends Command
     public function handle(): int
     {
         $scanPaths = $this->option('path') ?: config(
-            'artisan-toolkit.model_scan_paths',
+            'artisan-toolkit.paths.model_scan',
             ['app/Models', 'app/Models/Base']
         );
 
-        $searchPath = $this->resolvePath($this->option('search'));
+        $searchPath = $this->resolvePath($this->option('search') ?: config('artisan-toolkit.prune_search_root', 'app'));
 
         $validPaths = $this->resolveValidPaths($scanPaths);
 

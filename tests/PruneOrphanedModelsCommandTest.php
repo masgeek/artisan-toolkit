@@ -86,7 +86,7 @@ class PruneOrphanedModelsCommandTest extends TestCase
 
     public function test_it_reads_scan_paths_from_config_when_no_path_option_given(): void
     {
-        config()->set('artisan-toolkit.model_scan_paths', [$this->modelsPath]);
+        config()->set('artisan-toolkit.paths.model_scan', [$this->modelsPath]);
 
         $className = 'ConfigOrphanModel'.uniqid();
         $this->writeModelFile($this->modelsPath, $className);
