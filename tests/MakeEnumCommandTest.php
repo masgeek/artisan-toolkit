@@ -3,6 +3,7 @@
 namespace Masgeek\ArtisanToolkit\Tests;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 class MakeEnumCommandTest extends TestCase
 {
@@ -148,5 +149,60 @@ class MakeEnumCommandTest extends TestCase
             'name' => 'Foo',
             '--backed' => 'boolean',
         ])->assertFailed();
+    }
+
+    public function test_it_builds_cases_from_a_database_column(): void
+    {
+        Schema::create('enum_sample_users', function ($table) {
+            $table->id();
+            $table->string('role');
+        });
+
+        Schema::getConnection()->table('enum_sample_users')->insert([
+            ['role' => 'admin'],
+            ['role' => 'partner'],
+            ['role' => 'admin'],
+        ]);
+
+        $this->artisan('make:enum', [
+            'name' => 'UserRole',
+            '--backed' => 'string',
+            '--table' => 'enum_sample_users.role',
+        ])->assertSuccessful();
+
+        $content = File::get($this->enumsPath.'/UserRole.php');
+        $this->assertStringContainsString("case Admin = 'admin';", $content);
+        $this->assertStringContainsString("case Partner = 'partner';", $content);
+        // Distinct values only.
+        $this->assertSame(1, substr_count($content, "case Admin = 'admin';"));
+
+        Schema::dropIfExists('enum_sample_users');
+    }
+
+    public function test_it_gracefully_handles_an_unknown_table(): void
+    {
+        $this->artisan('make:enum', [
+            'name' => 'UserRole',
+            '--backed' => 'string',
+            '--table' => 'no_such_table.column',
+        ])->assertSuccessful();
+
+        $content = File::get($this->enumsPath.'/UserRole.php');
+        $this->assertStringContainsString('Error fetching table values', $content);
+    }
+
+    public function test_it_honours_the_configured_enum_path(): void
+    {
+        File::deleteDirectory(app_path('Domain'));
+
+        config()->set('artisan-toolkit.paths.enums', 'app/Domain/Enums');
+
+        $this->artisan('make:enum', ['name' => 'UserRole'])->assertSuccessful();
+
+        $file = app_path('Domain/Enums/UserRole.php');
+        $this->assertFileExists($file);
+        $this->assertStringContainsString('namespace App\Domain\Enums;', File::get($file));
+
+        File::deleteDirectory(app_path('Domain'));
     }
 }
