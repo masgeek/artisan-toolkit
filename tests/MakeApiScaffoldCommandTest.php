@@ -181,16 +181,30 @@ class MakeApiScaffoldCommandTest extends TestCase
         $this->assertEquals(1, substr_count($routesContent, 'v1/currencies'));
     }
 
-    public function test_it_warns_on_missing_route_anchor(): void
+    public function test_it_appends_route_when_no_anchor_is_present(): void
     {
         File::ensureDirectoryExists(base_path('routes'));
-        File::put(base_path('routes/api.php'), "<?php\n\n// No mutating anchor in this file");
+        File::put(base_path('routes/api.php'), "<?php\n\n// Standard Laravel 11+ api routes");
 
         $this->artisan('make:api-scaffold', ['name' => 'Currency'])
             ->assertSuccessful();
 
         $routesContent = File::get(base_path('routes/api.php'));
-        $this->assertStringNotContainsString('v1/currencies', $routesContent);
+        $this->assertStringContainsString('v1/currencies', $routesContent);
+        $this->assertStringContainsString('CurrencyController::class', $routesContent);
+    }
+
+    public function test_it_warns_when_routes_file_is_missing(): void
+    {
+        File::ensureDirectoryExists(base_path('routes'));
+
+        if (File::exists(base_path('routes/api.php'))) {
+            File::delete(base_path('routes/api.php'));
+        }
+
+        $this->artisan('make:api-scaffold', ['name' => 'Currency'])
+            ->assertSuccessful()
+            ->expectsOutputToContain('install:api');
     }
 
     public function test_it_generates_resource_stub_with_placeholder_fields(): void
