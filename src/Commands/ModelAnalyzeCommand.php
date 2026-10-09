@@ -7,7 +7,6 @@ namespace Masgeek\ArtisanToolkit\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Throwable;
 
 final class ModelAnalyzeCommand extends Command
 {
@@ -61,16 +60,13 @@ final class ModelAnalyzeCommand extends Command
             return $fqcn;
         }
 
-        // 2. Try configured scan paths
-        $paths = config('artisan-toolkit.paths.model_scan', ['app/Models', 'app/Models/Base']);
-        foreach ($paths as $path) {
-            $namespace = str_replace(['app/', '/'], ['', '\\'], $path);
-            $namespace = ucfirst($namespace);
-            
-            $fqcn = $namespace . '\\' . $studlyInput;
-            if (class_exists($fqcn)) {
-                return $fqcn;
-            }
+        // 2. Search the configured scan directories for a matching class file.
+        //    The directory may live anywhere (absolute path, outside app/), so the
+        //    namespace is read from the file rather than guessed from the path.
+        $found = $this->findInScanPaths($studlyInput);
+
+        if ($found !== null) {
+            return $found;
         }
 
         // 3. Try inferring from table name (Singularize -> Base Namespace)
@@ -81,5 +77,56 @@ final class ModelAnalyzeCommand extends Command
         }
 
         return null;
+    }
+
+    /**
+     * Locate a model class by filename inside paths.model_scan.
+     */
+    private function findInScanPaths(string $studlyInput): ?string
+    {
+        $paths = config('artisan-toolkit.paths.model_scan', ['app/Models', 'app/Models/Base']);
+
+        foreach ((array) $paths as $path) {
+            $directory = $this->resolveDirectory((string) $path);
+
+            if ($directory === null) {
+                continue;
+            }
+
+            $file = $directory.DIRECTORY_SEPARATOR.$studlyInput.'.php';
+
+            if (! is_file($file)) {
+                continue;
+            }
+
+            $contents = (string) file_get_contents($file);
+
+            if (preg_match('/^namespace\s+([^;]+);/m', $contents, $ns) !== 1) {
+                continue;
+            }
+
+            $fqcn = trim($ns[1]).'\\'.$studlyInput;
+
+            if (! class_exists($fqcn)) {
+                require_once $file;
+            }
+
+            if (class_exists($fqcn)) {
+                return $fqcn;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveDirectory(string $path): ?string
+    {
+        if (str_starts_with($path, DIRECTORY_SEPARATOR) || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1) {
+            return is_dir($path) ? $path : null;
+        }
+
+        $absolute = base_path($path);
+
+        return is_dir($absolute) ? $absolute : null;
     }
 }
