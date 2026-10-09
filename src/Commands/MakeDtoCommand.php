@@ -23,7 +23,8 @@ final class MakeDtoCommand extends Command
         $name = Str::studly($this->argument('name'));
         $modelName = $this->option('model');
         
-        $filePath = app_path("DTOs/{$name}.php");
+        $path = config('artisan-toolkit.paths.dtos', 'app/DTOs');
+        $filePath = base_path($path."/{$name}.php");
         
         if ($files->exists($filePath)) {
             $this->error("DTO [{$name}] already exists.");

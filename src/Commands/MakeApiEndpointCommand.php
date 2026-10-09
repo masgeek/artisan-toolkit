@@ -24,7 +24,8 @@ final class MakeApiEndpointCommand extends Command
         $method = $this->argument('method');
         $model = $this->option('model') ?: $name;
 
-        $controllerPath = app_path("Http/Controllers/Api/{$name}Controller.php");
+        $paths = config('artisan-toolkit.paths');
+        $controllerPath = base_path($paths['api_controllers']."/{$name}Controller.php");
 
         if (! file_exists($controllerPath)) {
             $this->error("Controller {$name}Controller not found. Run make:api-scaffold first.");
@@ -32,7 +33,7 @@ final class MakeApiEndpointCommand extends Command
         }
 
         $requestName = "{$name}" . Str::studly($method) . "Request";
-        $requestPath = app_path("Http/Requests/{$requestName}.php");
+        $requestPath = base_path($paths['requests']."/{$requestName}.php");
 
         $this->info("Adding {$method} to {$name}Controller...");
         $this->injectMethod($controllerPath, $method, $requestName);

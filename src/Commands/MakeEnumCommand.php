@@ -63,7 +63,8 @@ class MakeEnumCommand extends Command
         $sub = implode('\\', $parts);
 
         $namespace = 'App\\Enums'.($sub ? '\\'.$sub : '');
-        $relativeDir = 'app/Enums'.($sub ? '/'.str_replace('\\', '/', $sub) : '');
+        $basePath = config('artisan-toolkit.paths.enums', 'app/Enums');
+        $relativeDir = $basePath.($sub ? '/'.str_replace('\\', '/', $sub) : '');
         $filePath = base_path($relativeDir.'/'.$className.'.php');
 
         return [$namespace, $className, $filePath];

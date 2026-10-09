@@ -17,7 +17,8 @@ final class MakeServiceCommand extends Command
     public function handle(Filesystem $files): int
     {
         $name = Str::studly($this->argument('name'));
-        $filePath = app_path("Services/{$name}Service.php");
+        $path = config('artisan-toolkit.paths.services', 'app/Services');
+        $filePath = base_path($path."/{$name}Service.php");
 
         if ($files->exists($filePath)) {
             $this->error("Service [{$name}Service] already exists.");
