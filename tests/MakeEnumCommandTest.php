@@ -22,12 +22,23 @@ class MakeEnumCommandTest extends TestCase
         parent::tearDown();
     }
 
+    private function assertPhpSyntax(string $filePath): void
+    {
+        $output = [];
+        $resultCode = 0;
+        exec("php -l " . escapeshellarg($filePath), $output, $resultCode);
+
+        $this->assertEquals(0, $resultCode, "PHP syntax error in {$filePath}: " . implode("\n", $output));
+    }
+
     public function test_it_creates_a_pure_enum(): void
     {
         $this->artisan('make:enum', ['name' => 'UserRole'])
             ->assertSuccessful();
 
         $this->assertFileExists($this->enumsPath.'/UserRole.php');
+
+        $this->assertPhpSyntax($this->enumsPath.'/UserRole.php');
 
         $content = File::get($this->enumsPath.'/UserRole.php');
         $this->assertStringContainsString('namespace App\Enums;', $content);
