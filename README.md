@@ -37,7 +37,7 @@ Publish the config file:
 php artisan vendor:publish --tag=artisan-toolkit-config
 ```
 
-This creates `config/artisan-toolkit.php`. The package is inert until you publish — without a published file the shipped defaults are used, and all commands run with default settings.
+This creates `config/artisan-toolkit.php`. Publishing is optional: without a published file the shipped defaults are used, and every command is registered with default settings.
 
 Verify the install:
 
@@ -93,9 +93,16 @@ Database schema dumped and pruned (1 deleted, 1 pending kept) successfully.
 | `--database=` | Connection to dump |
 | `--path=` | Where the dump file is written |
 | `--prune` | Delete only already-run migration files |
+| `--no-schema` | Force a schema-agnostic dump for this run, overriding `schema_dump_include_schema` |
 | `--without-migration-data` | Omit migration data from the dump |
 
-The command refuses to run in production.
+The command uses Laravel's `Prohibitable` trait: call `SchemaDumpCommand::prohibit()` (for example from a service provider when running in production) to block it.
+
+By default the dump keeps the schema qualifier (`public.` for PostgreSQL, `dbo.` for SQL Server) on every identifier. Set `schema_dump_include_schema` to `false` to strip it, producing a schema-agnostic dump you can load into any schema. This also removes the statements that bind the dump to a named schema: `CREATE SCHEMA ...;` and `search_path` pinning such as `SET search_path = ...;` or `SELECT pg_catalog.set_config('search_path', '', false);`.
+
+```php
+'schema_dump_include_schema' => false,
+```
 
 #### `key:generate`
 
@@ -188,6 +195,7 @@ php artisan make:enum Billing/InvoiceStatus --backed=int --cases=Draft,Pending,P
 | `--cases=` | Comma-separated case names. |
 | `--table=` | Generate cases from the distinct values of a DB column, e.g. `users.role`. |
 | `--force` | Overwrite an existing file. |
+| `--dry-run` | Show the file that would be created without writing it. |
 
 `--table` requires the value to already exist in the database:
 
@@ -219,6 +227,7 @@ php artisan make:api-scaffold Currency --model=MyCurrency
 php artisan make:api-scaffold Currency --prefix=my-currencies
 php artisan make:api-scaffold Currency --no-route
 php artisan make:api-scaffold Currency --force
+php artisan make:api-scaffold Currency --with-tests --with-factory
 ```
 
 | Option | Description |
@@ -226,6 +235,9 @@ php artisan make:api-scaffold Currency --force
 | `--model=` | Model class name. Defaults to the name argument. |
 | `--prefix=` | URL prefix. Defaults to the kebab-case plural of the name. |
 | `--force` | Overwrite existing files. |
+| `--with-routes` | Register the index route. This is the default; use `--no-route` to skip. |
+| `--with-tests` | Also generate a feature test for the index endpoint in `paths.tests`. |
+| `--with-factory` | Also generate a model factory in `paths.factories`. |
 | `--no-route` | Skip route registration. |
 
 Files created:
@@ -237,6 +249,8 @@ Files created:
 | `Http/Resources/{Name}Resource.php` | Resource with fields read from the model's table |
 | `Http/Resources/Collections/{Name}ResourceCollection.php` | Resource collection |
 | `Http/Requests/{Name}Request.php` | Form request with rules inferred from the model's columns |
+| `{paths.tests}/Api/{Name}ControllerTest.php` | Index-endpoint feature test (`--with-tests`) |
+| `{paths.factories}/{Model}Factory.php` | Model factory stub (`--with-factory`) |
 
 The controller is generated with a ready `index()` endpoint using `paginateWithSort()`, and the resource's `toArray()` is pre-filled from the real database columns, with date-cast and timestamp columns routed through `formatDate()`.
 
@@ -249,12 +263,19 @@ The controller is generated with a ready `index()` endpoint using `paginateWithS
 
 #### `make:repo`
 
-Generates a repository class.
+Generates a repository class extending `base_classes.repository`. The generated class defines a `model()` method returning the bound model.
 
 ```bash
 php artisan make:repo UserRepo
 php artisan make:repo PostRepo --model=Post
 ```
+
+| Option | Description |
+|---|---|
+| `--model=` | Model the repository is bound to. |
+| `--force` | Overwrite an existing repository. |
+| `--with-interface` | Also generate `{Name}Interface` in `paths.repository_interfaces` and implement it. |
+| `--dry-run` | Show the files that would be created without writing them. |
 
 #### `make:resource-full`
 
@@ -274,12 +295,35 @@ php artisan make:resource-full UserResource --model=User --with-relationships
 
 #### `make:dto`
 
-Generates a data transfer object, optionally populated from a model's columns.
+Generates a data transfer object. With `--model`, one typed `public readonly` property is created per column in the model's table.
 
 ```bash
 php artisan make:dto UserData
 php artisan make:dto UserData --model=User
+php artisan make:dto UserData --from-request=App\Http\Requests\StoreUserRequest
 ```
+
+| Option | Description |
+|---|---|
+| `--model=` | Model whose table columns become DTO properties. Types and nullability come from the schema. |
+| `--from-request=` | FormRequest class; one typed property is derived from each validation rule. |
+| `--force` | Overwrite an existing DTO. |
+| `--dry-run` | Show the file that would be created without writing it. |
+
+#### `make:request`
+
+Generates a form request. With `--model`, validation rules are inferred from the model's columns, skipping the primary key, timestamps and soft-delete columns.
+
+```bash
+php artisan make:request StoreUserRequest
+php artisan make:request StoreUserRequest --model=User
+```
+
+| Option | Description |
+|---|---|
+| `--model=` | Model whose columns drive the inferred rules. |
+| `--force` | Overwrite an existing request. |
+| `--dry-run` | Show the file that would be created without writing it. |
 
 #### `make:service`
 
@@ -288,6 +332,11 @@ Generates an empty service class.
 ```bash
 php artisan make:service Billing
 ```
+
+| Option | Description |
+|---|---|
+| `--force` | Overwrite an existing service. |
+| `--dry-run` | Show the file that would be created without writing it. |
 
 #### `make:api-endpoint`
 
@@ -315,16 +364,25 @@ Lists a model's relationships as a table, including those inherited from a base 
 
 ```bash
 php artisan model:relations "App\Models\User"
+php artisan model:relations "App\Models\User" --depth=2
+php artisan model:relations "App\Models\User" --json
 ```
 
 ```
-┌────────────┬────────────┬──────────────┐
-│ Method     │ Type       │ Target Model │
-├────────────┼────────────┼──────────────┤
-│ posts      │ HasMany    │ Post         │
-│ profile    │ HasOne     │ Profile      │
-└────────────┴────────────┴──────────────┘
+┌────────────┬────────────┬──────────────┬─────────┬───────┐
+│ Method     │ Type       │ Target Model │ Inverse │ Pivot │
+├────────────┼────────────┼──────────────┼─────────┼───────┤
+│ posts      │ HasMany    │ Post         │ user    │ —     │
+│ profile    │ HasOne     │ Profile      │ user    │ —     │
+└────────────┴────────────┴──────────────┴─────────┴───────┘
 ```
+
+| Option | Description |
+|---|---|
+| `--depth=` | Recurse into related models up to this depth (default `1`). Deeper rows show a `Path` column such as `posts.comments`. |
+| `--json` | Emit results as JSON, including `path`, `target`, `inverse`, `pivot` and `depth`. |
+
+`Inverse` is the relation method on the related model that points back (when one exists). `Pivot` lists `belongsToMany` pivot columns declared with `withPivot()`.
 
 #### `model:analyze`
 
@@ -366,6 +424,8 @@ The inverse view: reports **columns that exist but are never read** anywhere in 
 php artisan model:find-unused
 php artisan model:find-unused --model=User --model=Post
 php artisan model:find-unused --json
+php artisan model:find-unused --fix            # preview a drop-columns migration
+php artisan model:find-unused --fix --apply    # write the migration file
 ```
 
 | Option | Description |
@@ -374,9 +434,13 @@ php artisan model:find-unused --json
 | `--search=` | Root directory to scan. Defaults to `prune_search_root`. |
 | `--exclude=*` | Extra columns to treat as always-used. |
 | `--include-timestamps` | Also report timestamp columns instead of skipping them. |
+| `--fix` | Generate a migration that drops the reported columns. |
+| `--apply` | With `--fix`, actually write the migration file (dry run otherwise). |
 | `--json` | Emit JSON instead of a table. |
 
-Automatically skips the primary key, `created_at`/`updated_at`, soft-delete columns, and anything declared in the model's `$fillable`, `$casts`, or `$appends` — a column the model wires up is not dead. The model's own file is also excluded from reference scanning, so a `$fillable` declaration can't mask a genuinely unused column.
+`--fix` only creates a migration; it never touches the database. Review the generated file before running it, and note that `down()` cannot restore dropped columns automatically.
+
+Automatically skips the primary key, `created_at`/`updated_at`, and soft-delete columns (pass `--include-timestamps` to report the timestamp and soft-delete columns too). The model's own file is excluded from reference scanning, so a column declared only in `$fillable`/`$casts` does not count as used and is still reported.
 
 Searchable file types: `.php`, `.blade.php`, `.json`, `.vue`, `.js`, `.ts`. A column counts as referenced if it appears as `->column`, `['column']`, or `'column' =>` anywhere.
 
@@ -420,10 +484,18 @@ Compares your published config against the shipped defaults. Reads the defaults 
 
 ```bash
 php artisan config:diff
-php artisan config:diff --fail    # non-zero exit when differences exist (for CI)
+php artisan config:diff --fail                     # non-zero exit when differences exist (for CI)
+php artisan config:diff --status=added,unset       # only keys missing from one side
+php artisan config:diff --json                     # machine-readable output
 ```
 
-Output is a table with a status badge per row, values rendered as indented JSON blocks, and class names shortened to their basename. Sensitive-looking keys (`*_secret`, `*_token`, `api_key`, …) are masked, with `key_storage_path` explicitly exempted since it holds a path rather than a secret.
+| Option | Description |
+|---|---|
+| `--fail` | Exit non-zero when differences are found. |
+| `--status=` | Comma-separated statuses to include, e.g. `added,unset`. |
+| `--json` | Emit `{differences, rows}` instead of a table. |
+
+Output is a table with a status badge per row, values rendered as indented JSON blocks, and class names shortened to their basename. Sensitive-looking keys (`*_secret`, `*_token`, `api_key`, …) are masked, with `key_storage_path` explicitly exempted since it holds a path rather than a secret. Masking also applies to `--json`.
 
 Statuses: `added`, `extended`, `modified`, `reordered`, `trimmed`, `disabled`, `unset`.
 
@@ -453,7 +525,19 @@ Filters registered routes by URI or name substring.
 ```bash
 php artisan route:filter v1/currencies
 php artisan route:filter users
+php artisan route:filter curren --method=POST --middleware=auth
+php artisan route:filter api --except=admin,internal
+php artisan route:filter v1 --json
 ```
+
+| Option | Description |
+|---|---|
+| `--method=` | Only routes handling this HTTP method. |
+| `--middleware=` | Only routes whose middleware contains this value. |
+| `--except=` | Comma-separated keywords to exclude by URI or name. |
+| `--json` | Emit `uri`, `name`, `methods` and `middleware` as JSON. |
+
+The pattern is treated as a regular expression when it is a valid delimited pattern (e.g. `'/^api\/v1/'`), otherwise as a case-sensitive substring match.
 
 #### `db:seed-partial`
 
@@ -473,12 +557,15 @@ php artisan db:seed-partial "Database\Seeders\UserSeeder"
 | `commands.*` | see config | Package commands to register |
 | `paths.enums` | `app/Enums` | Target for `make:enum` |
 | `paths.repositories` | `app/Repositories` | Target for repositories |
+| `paths.repository_interfaces` | `app/Repositories/Contracts` | Target for `make:repo --with-interface` |
 | `paths.services` | `app/Services` | Target for `make:service` |
 | `paths.dtos` | `app/DTOs` | Target for `make:dto` |
 | `paths.api_controllers` | `app/Http/Controllers/Api` | Target for API controllers |
 | `paths.resources` | `app/Http/Resources` | Target for resources |
 | `paths.resource_collections` | `app/Http/Resources/Collections` | Target for resource collections |
 | `paths.requests` | `app/Http/Requests` | Target for form requests |
+| `paths.tests` | `tests/Feature` | Target for `make:api-scaffold --with-tests` |
+| `paths.factories` | `database/factories` | Target for `make:api-scaffold --with-factory` |
 | `paths.model_scan` | `['app/Models', 'app/Models/Base']` | Directories scanned for models |
 | `base_classes.repository` | `App\Repositories\BaseRepo` | Parent class for generated repositories |
 | `base_classes.resource` | `Illuminate\Http\Resources\Json\JsonResource` | Parent class for generated resources |
@@ -489,6 +576,7 @@ php artisan db:seed-partial "Database\Seeders\UserSeeder"
 | `queues` | `['default', 'high', 'low']` | Queues managed by `queues:*` |
 | `queue_timeout` | `60` | Seconds passed to `queue:listen` |
 | `prune_search_root` | `app` | Root directory for reference scanning |
+| `schema_dump_include_schema` | `true` | Keep the schema prefix in `schema:dump` output; `false` makes dumps schema-agnostic |
 
 Each entry is documented inline in `config/artisan-toolkit.php`.
 
