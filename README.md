@@ -416,17 +416,28 @@ php artisan model:prune-orphaned --delete --force
 
 References are matched across `.php`, `.blade.php`, and `.json` files, so a model referenced only from a Blade view or a JSON config is correctly treated as used. Use `-v` to print per-model reasoning.
 
-#### `model:find-unused`
+#### `model:fillable-audit`
 
-The inverse view: reports **columns that exist but are never read** anywhere in the codebase.
+Compares a model's `$fillable` and `$casts` arrays against the actual database schema, reporting mismatches and missing cast suggestions.
 
 ```bash
-php artisan model:find-unused
-php artisan model:find-unused --model=User --model=Post
-php artisan model:find-unused --json
-php artisan model:find-unused --fix            # preview a drop-columns migration
-php artisan model:find-unused --fix --apply    # write the migration file
+php artisan model:fillable-audit
+php artisan model:fillable-audit --model=User --model=Post
+php artisan model:fillable-audit --json                     # JSON output for CI
+php artisan model:fillable-audit --fail                     # non‑zero exit when missing attributes or casts are found
 ```
+
+| Option | Description |
+|---|---|
+| `--model=*` | Limit to the given model classes (FQCN or short name). |
+| `--json` | Emit JSON containing `issues` with `kind`, `attribute`, `detail` and `severity`. |
+| `--fail` | Exit non‑zero when any `error`‑severity issue (missing columns or casts) is found. |
+
+The command flags:
+- **missing-fillable** – `$fillable` entries that do not exist in the table.
+- **missing-cast** – `$casts` entries that do not exist.
+- **unfillable** – Table columns not listed in `$fillable` (ignoring primary key, timestamps, soft‑deletes).
+- **uncast** – Columns that have a type that Laravel can cast but lack an explicit cast entry (suggested cast shown).
 
 | Option | Description |
 |---|---|
@@ -478,16 +489,26 @@ All three fail with a clear message if `queues` is empty.
 
 ### Utilities
 
-#### `config:diff`
+#### `env:diff`
 
-Compares your published config against the shipped defaults. Reads the defaults directly from the package's own `config/artisan-toolkit.php`, so it can never drift from the real defaults.
+Compares two env files by key without revealing values. Useful for CI to ensure required keys exist.
 
 ```bash
-php artisan config:diff
-php artisan config:diff --fail                     # non-zero exit when differences exist (for CI)
-php artisan config:diff --status=added,unset       # only keys missing from one side
-php artisan config:diff --json                     # machine-readable output
+php artisan env:diff
+php artisan env:diff --base=.env.example --target=.env
+php artisan env:diff --json                     # machine‑readable JSON output
+php artisan env:diff --fail                     # non‑zero exit when required keys are missing
 ```
+
+| Option | Description |
+|---|---|
+| `--base=` | Reference env file (default `.env.example`). |
+| `--target=` | Env file to compare (default `.env`). |
+| `--json` | Emit JSON with `missing`, `extra`, `empty`, `duplicates` arrays. |
+| `--fail` | Exit with error code when any required key is missing. |
+
+The command never prints values; it only reports key mismatches, empty values, and duplicate definitions.
+
 
 | Option | Description |
 |---|---|

@@ -9,7 +9,8 @@ use Masgeek\ArtisanToolkit\Commands\MakeEnumCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeRequestCommand;
-use Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand;
+use Masgeek\ArtisanToolkit\Commands\ModelFillableAuditCommand;
+use Masgeek\ArtisanToolkit\Commands\EnvDiffCommand;
 use Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand;
 use Masgeek\ArtisanToolkit\Commands\RotateAppKey;
 use Masgeek\ArtisanToolkit\Commands\SchemaDumpCommand;
@@ -39,7 +40,8 @@ abstract class TestCase extends OrchestraTestCase
             'make:request' => MakeRequestCommand::class,
             'model:relations' => ListModelRelationsCommand::class,
             'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
-            'model:find-unused' => ModelFindUnusedCommand::class,
+            'model:fillable-audit' => ModelFillableAuditCommand::class,
+            'env:diff' => EnvDiffCommand::class,
         ]);
     }
 }

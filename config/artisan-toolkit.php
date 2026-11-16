@@ -223,6 +223,9 @@ return [
         // Reports model attributes that are never referenced in the codebase.
         'model:find-unused' => \Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand::class,
 
+        // Compares $fillable and $casts against the model's actual table columns.
+        'model:fillable-audit' => \Masgeek\ArtisanToolkit\Commands\ModelFillableAuditCommand::class,
+
         // Queues -------------------------------------------------------------
 
         // Lists the queues defined in the queues array above.
@@ -238,6 +241,9 @@ return [
 
         // Compares this config against the package defaults.
         'config:diff' => \Masgeek\ArtisanToolkit\Commands\ConfigDiffCommand::class,
+
+        // Compares two env files by key without printing any values.
+        'env:diff' => \Masgeek\ArtisanToolkit\Commands\EnvDiffCommand::class,
 
         // Runs a single seeder class without the full DatabaseSeeder.
         'db:seed-partial' => \Masgeek\ArtisanToolkit\Commands\DbSeedPartialCommand::class,
