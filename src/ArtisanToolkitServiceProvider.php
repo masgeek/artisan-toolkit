@@ -48,6 +48,7 @@ class ArtisanToolkitServiceProvider extends ServiceProvider
                 'model:analyze' => \Masgeek\ArtisanToolkit\Commands\ModelAnalyzeCommand::class,
                 'model:find-unused' => \Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand::class,
                 'model:fillable-audit' => \Masgeek\ArtisanToolkit\Commands\ModelFillableAuditCommand::class,
+                'env:fix' => \Masgeek\ArtisanToolkit\Commands\EnvFixCommand::class,
                 'queues:list' => \Masgeek\ArtisanToolkit\Commands\QueuesListCommand::class,
                 'queues:listen' => \Masgeek\ArtisanToolkit\Commands\QueuesListenCommand::class,
                 'queues:clear' => \Masgeek\ArtisanToolkit\Commands\QueuesClearCommand::class,
