@@ -113,7 +113,7 @@ final class EnvDiffCommand extends Command
         $duplicates = [];
 
         foreach (preg_split('/\r\n|\r|\n/', (string) file_get_contents($path)) ?: [] as $line) {
-            if (preg_match('/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/', $line, $matches) !== 1) {
+            if (preg_match('/^\s*(?:#\s*)?(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/', $line, $matches) !== 1) {
                 continue;
             }
 
@@ -175,7 +175,7 @@ final class EnvDiffCommand extends Command
         $rows = [];
 
         foreach ($missing as $key) {
-            $rows[] = [$key, 'missing', 'present in base only'];
+            $rows[] = [$key, 'missing', 'present in base (.env) only'];
         }
 
         foreach ($empty as $key) {
