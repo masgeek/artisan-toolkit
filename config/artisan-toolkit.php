@@ -245,6 +245,9 @@ return [
         // Compares two env files by key without printing any values.
         'env:diff' => \Masgeek\ArtisanToolkit\Commands\EnvDiffCommand::class,
 
+        // Fixes an env file by adding missing keys and commenting duplicates/empty values.
+        'env:fix' => \Masgeek\ArtisanToolkit\Commands\EnvFixCommand::class,
+
         // Runs a single seeder class without the full DatabaseSeeder.
         'db:seed-partial' => \Masgeek\ArtisanToolkit\Commands\DbSeedPartialCommand::class,
 
