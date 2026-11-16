@@ -42,6 +42,7 @@ abstract class TestCase extends OrchestraTestCase
             'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
             'model:fillable-audit' => ModelFillableAuditCommand::class,
             'env:diff' => EnvDiffCommand::class,
+            'env:fix' => \Masgeek\ArtisanToolkit\Commands\EnvFixCommand::class,
         ]);
     }
 }
