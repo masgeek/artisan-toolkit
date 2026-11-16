@@ -26,6 +26,7 @@ Coverage threshold in CI is 70%.
 - **`tests/TestCase.php` `defineEnvironment()`** must also list it, or tests can't resolve it.
 - **`ConfigDiffCommand` requires the shipped config** (`require __DIR__.'/../../config/artisan-toolkit.php'`) rather than duplicating defaults — that is intentional, do not "clean it up" into a literal array.
 - **`key:generate` is dry-run by default** and needs `--apply` to write. Breaking change from earlier versions.
+- **`schema:dump`** includes the schema prefix (e.g. `public.`, `dbo.`) by default. Set `schema_dump_include_schema` to `false` in `config/artisan-toolkit.php` to generate schema-agnostic dumps that can be run against any database schema.
 - **Heredoc interpolation trap**: `\$this->$repoVar->method()` parses as property access *on the string variable*. Use `{$repoVar}`. This silently emitted `$this->(` into generated code once already.
 - **`ModelFindUnusedCommand` excludes the model's own file** from reference scanning, so a `$fillable` declaration can't mask a dead column. Preserve that.
 - **`MakeRepositoryCommand`, `MakeFullResourceCommand`, `MakeApiScaffoldCommand` resolve paths via `GeneratorPath`** (`src/Support/GeneratorPath.php`) — never call `app_path()` directly in a generator. The helper also derives the namespace from the configured path.

@@ -20,7 +20,7 @@ final class ModelAnalyzeCommand extends Command
         $modelClass = $this->resolveModelClass($input);
 
         if (! $modelClass || ! class_exists($modelClass)) {
-            $this->error("Could not resolve model class for input: {$input}");
+            $this->error('Could not resolve model class');
             return self::FAILURE;
         }
 

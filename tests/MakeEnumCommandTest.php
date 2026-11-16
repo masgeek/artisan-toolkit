@@ -205,4 +205,15 @@ class MakeEnumCommandTest extends TestCase
 
         File::deleteDirectory(app_path('Domain'));
     }
+
+    public function test_it_supports_dry_run(): void
+    {
+        $this->artisan('make:enum', [
+            'name' => 'DraftEnum',
+            '--dry-run' => true,
+        ])->assertSuccessful()
+            ->expectsOutputToContain('dry-run');
+
+        $this->assertFileDoesNotExist($this->enumsPath.'/DraftEnum.php');
+    }
 }

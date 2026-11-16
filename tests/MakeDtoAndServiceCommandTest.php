@@ -119,4 +119,63 @@ class MakeDtoAndServiceCommandTest extends TestCase
 
         File::deleteDirectory(app_path('Domain'));
     }
+
+    public function test_it_forces_dto_overwrite(): void
+    {
+        File::ensureDirectoryExists($this->dtosPath);
+        File::put($this->dtosPath.'/UserData.php', '<?php // stale');
+
+        $this->artisan('make:dto', ['name' => 'UserData', '--force' => true])
+            ->assertSuccessful();
+
+        $this->assertStringContainsString('final class UserData', File::get($this->dtosPath.'/UserData.php'));
+    }
+
+    public function test_dto_and_service_support_dry_run(): void
+    {
+        $this->artisan('make:dto', ['name' => 'DraftData', '--dry-run' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('dry-run');
+
+        $this->artisan('make:service', ['name' => 'Draft', '--dry-run' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('dry-run');
+
+        $this->assertFileDoesNotExist($this->dtosPath.'/DraftData.php');
+        $this->assertFileDoesNotExist($this->servicesPath.'/DraftService.php');
+    }
+
+    public function test_it_forces_service_overwrite(): void
+    {
+        File::ensureDirectoryExists($this->servicesPath);
+        File::put($this->servicesPath.'/BillingService.php', '<?php // stale');
+
+        $this->artisan('make:service', ['name' => 'Billing', '--force' => true])
+            ->assertSuccessful();
+
+        $this->assertStringContainsString('final class BillingService', File::get($this->servicesPath.'/BillingService.php'));
+    }
+
+    public function test_it_builds_a_dto_from_a_form_request(): void
+    {
+        eval('namespace App\Http\Requests; class DtoRulesRequest extends \Illuminate\Foundation\Http\FormRequest {
+            public function rules(): array {
+                return [
+                    "name" => ["required", "string"],
+                    "age" => ["nullable", "integer"],
+                    "tags" => ["array"],
+                ];
+            }
+        }');
+
+        $this->artisan('make:dto', [
+            'name' => 'ProfileData',
+            '--from-request' => 'App\Http\Requests\DtoRulesRequest',
+        ])->assertSuccessful();
+
+        $content = File::get($this->dtosPath.'/ProfileData.php');
+        $this->assertStringContainsString('public readonly string $name;', $content);
+        $this->assertStringContainsString('public readonly int|null $age;', $content);
+        $this->assertStringContainsString('public readonly array $tags;', $content);
+    }
 }

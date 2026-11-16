@@ -3,6 +3,7 @@
 namespace Masgeek\ArtisanToolkit\Tests;
 
 use Database\Seeders\ToolkitTestSeeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 class UtilityCommandsTest extends TestCase
@@ -43,6 +44,42 @@ class UtilityCommandsTest extends TestCase
     {
         $this->artisan('route:filter', ['pattern' => 'nothing-matches-this'])
             ->assertSuccessful();
+    }
+
+    public function test_route_filter_outputs_json_and_honours_method_and_except(): void
+    {
+        Route::get('v1/widgets', fn () => 'ok')->name('widgets.index');
+        Route::post('v1/widgets', fn () => 'ok')->name('widgets.store');
+
+        Artisan::call('route:filter', ['pattern' => 'widgets', '--json' => true]);
+        $decoded = json_decode(Artisan::output(), true);
+
+        $this->assertNotEmpty($decoded);
+        $this->assertArrayHasKey('methods', $decoded[0]);
+
+        Artisan::call('route:filter', ['pattern' => 'widgets', '--method' => 'POST']);
+        $this->assertStringContainsString('POST', Artisan::output());
+
+        Artisan::call('route:filter', ['pattern' => 'widgets', '--except' => 'store', '--json' => true]);
+        foreach (json_decode(Artisan::output(), true) as $route) {
+            $this->assertStringNotContainsString('store', (string) $route['name']);
+        }
+    }
+
+    public function test_route_filter_honours_middleware_filter(): void
+    {
+        Route::get('v1/guarded', fn () => 'ok')->name('guarded.index')->middleware('throttle:60,1');
+
+        Artisan::call('route:filter', [
+            'pattern' => 'guarded',
+            '--middleware' => 'throttle',
+            '--json' => true,
+        ]);
+
+        $decoded = json_decode(Artisan::output(), true);
+
+        $this->assertNotEmpty($decoded);
+        $this->assertStringContainsString('throttle', implode(',', $decoded[0]['middleware']));
     }
 
     public function test_db_seed_partial_runs_a_seeder(): void

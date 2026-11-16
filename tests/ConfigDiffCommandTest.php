@@ -132,4 +132,38 @@ class ConfigDiffCommandTest extends TestCase
             ->assertFailed()
             ->expectsOutputToContain('Config not found');
     }
+
+    public function test_it_emits_json(): void
+    {
+        config()->set('artisan-toolkit.api_version', 'v3');
+
+        Artisan::call('config:diff', ['--json' => true]);
+        $decoded = json_decode(Artisan::output(), true);
+
+        $this->assertIsArray($decoded);
+        $this->assertGreaterThan(0, $decoded['differences']);
+        $this->assertContains('modified', array_column($decoded['rows'], 'status'));
+    }
+
+    public function test_json_masks_sensitive_values(): void
+    {
+        config()->set('artisan-toolkit.encrypted_models', ['secret_token' => 'super-secret-token']);
+
+        Artisan::call('config:diff', ['--json' => true]);
+        $decoded = json_decode(Artisan::output(), true);
+
+        $this->assertStringNotContainsString('super-secret-token', Artisan::output());
+        $this->assertSame('••••••••', $decoded['rows'][0]['yours']['secret_token']);
+    }
+
+    public function test_it_filters_rows_by_status(): void
+    {
+        config()->set('artisan-toolkit.api_version', 'v3');
+
+        Artisan::call('config:diff', ['--status' => 'added', '--json' => true]);
+        $decoded = json_decode(Artisan::output(), true);
+
+        $this->assertSame([], $decoded['rows']);
+        $this->assertSame(0, $decoded['differences']);
+    }
 }

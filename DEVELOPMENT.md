@@ -88,6 +88,8 @@ php artisan config:diff
 src/
   ArtisanToolkitServiceProvider.php   Merges defaults with user config, registers commands
   Commands/                           One class per command
+  Support/GeneratorPath.php           Resolves configured generator paths and namespaces
+  Support/ModelColumns.php            Normalises model table columns, PHP types and validation rules
 config/
   artisan-toolkit.php                 Shipped defaults; also the source of truth for config:diff
 tests/

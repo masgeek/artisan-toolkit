@@ -16,6 +16,9 @@ class MakeApiScaffoldCommand extends Command
                                 {--model= : Model class name (defaults to {name})}
                                 {--prefix= : URL prefix override, e.g. starch-factories (defaults to kebab-plural of name)}
                                 {--force : Overwrite existing files}
+                                {--with-routes : Register the index route (default; use --no-route to skip)}
+                                {--with-tests : Also generate a feature test for the index endpoint}
+                                {--with-factory : Also generate a model factory}
                                 {--no-route : Skip automatic route registration}';
 
     protected $description = 'Scaffold an API controller, repository, resource, and resource collection for a given name';
@@ -35,14 +38,24 @@ class MakeApiScaffoldCommand extends Command
         $name = Str::studly($nameArg);
         $model = Str::studly($this->option('model') ?: $name);
         $force = $this->option('force');
-
+        $prefix = $this->option('prefix') ?: Str::kebab(Str::plural($name));
 
         $this->line("Scaffolding <info>{$name}</info> (model: <info>{$model}</info>)...");
 
         $generated = [];
         $skipped = [];
 
-        foreach ($this->buildFiles($name, $model) as $label => [$path, $stub]) {
+        $files = $this->buildFiles($name, $model);
+
+        if ($this->option('with-tests')) {
+            $files += $this->testFiles($name, $prefix);
+        }
+
+        if ($this->option('with-factory')) {
+            $files += $this->factoryFiles($model);
+        }
+
+        foreach ($files as $label => [$path, $stub]) {
             if (! $force && file_exists($path)) {
                 $skipped[] = $label;
 
@@ -68,8 +81,7 @@ class MakeApiScaffoldCommand extends Command
             return self::FAILURE;
         }
 
-        if (! $this->option('no-route')) {
-            $prefix = $this->option('prefix') ?: Str::kebab(Str::plural($name));
+        if ($this->option('with-routes') || ! $this->option('no-route')) {
             $this->registerRoute($name, $prefix);
         }
 
@@ -93,11 +105,14 @@ class MakeApiScaffoldCommand extends Command
         }
 
         $contents = file_get_contents($routesFile);
-        $controller = "\\App\\Http\\Controllers\\Api\\{$name}Controller";
+        $version = config('artisan-toolkit.api_version', 'v1');
+        $controllerNamespace = GeneratorPath::namespaceFor('api_controllers', 'app/Http/Controllers/Api');
+        $controller = "\\{$controllerNamespace}\\{$name}Controller";
+        $uri = "{$version}/{$prefix}";
 
         $routeBlock = <<<ROUTE
 
-    Route::prefix('v1/{$prefix}')->group(function () {
+    Route::prefix('{$uri}')->group(function () {
         Route::get('/', [{$controller}::class, 'index']);
     });
 
@@ -109,22 +124,22 @@ ROUTE;
         $anchor = "\n});\n\n// Mutating";
 
         if (str_contains($contents, $anchor)) {
-            if (str_contains($contents, "v1/{$prefix}")) {
-                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+            if (str_contains($contents, $uri)) {
+                $this->warn("  Route prefix '{$uri}' already exists in routes/api.php — skipped.");
                 return;
             }
 
             $updated = str_replace($anchor, "\n".$routeBlock."});\n\n// Mutating", $contents);
             file_put_contents($routesFile, $updated);
-            $this->info("  Route:   GET /v1/{$prefix} registered in routes/api.php");
+            $this->info("  Route:   GET /{$uri} registered in routes/api.php");
         } else {
-            if (str_contains($contents, "v1/{$prefix}")) {
-                $this->warn("  Route prefix 'v1/{$prefix}' already exists in routes/api.php — skipped.");
+            if (str_contains($contents, $uri)) {
+                $this->warn("  Route prefix '{$uri}' already exists in routes/api.php — skipped.");
                 return;
             }
 
             file_put_contents($routesFile, $contents . $routeBlock);
-            $this->info("  Route:   GET /v1/{$prefix} appended to routes/api.php");
+            $this->info("  Route:   GET /{$uri} appended to routes/api.php");
         }
     }
 
@@ -157,6 +172,80 @@ ROUTE;
                 $this->requestStub($name, $model),
             ],
         ];
+    }
+
+    /**
+     * A feature test covering the generated index endpoint.
+     *
+     * @return array<string, array{string, string}>
+     */
+    private function testFiles(string $name, string $prefix): array
+    {
+        $namespace = GeneratorPath::namespaceFor('tests', 'tests/Feature').'\\Api';
+        $path = GeneratorPath::to('tests', 'tests/Feature')."/Api/{$name}ControllerTest.php";
+        $version = config('artisan-toolkit.api_version', 'v1');
+        $uri = "/{$version}/{$prefix}";
+
+        $stub = <<<PHP
+<?php
+
+namespace {$namespace};
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class {$name}ControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_index_returns_a_successful_response(): void
+    {
+        \$response = \$this->getJson('{$uri}');
+
+        \$response->assertOk();
+    }
+}
+PHP;
+
+        return ["{$name}ControllerTest.php" => [$path, $stub]];
+    }
+
+    /**
+     * A model factory stub.
+     *
+     * @return array<string, array{string, string}>
+     */
+    private function factoryFiles(string $model): array
+    {
+        $namespace = GeneratorPath::namespaceFor('factories', 'database/factories');
+        $path = GeneratorPath::to('factories', 'database/factories')."/{$model}Factory.php";
+        $modelClass = GeneratorPath::modelClass($model);
+
+        $stub = <<<PHP
+<?php
+
+namespace {$namespace};
+
+use {$modelClass};
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<{$model}>
+ */
+class {$model}Factory extends Factory
+{
+    protected \$model = {$model}::class;
+
+    public function definition(): array
+    {
+        return [
+            //
+        ];
+    }
+}
+PHP;
+
+        return ["{$model}Factory.php" => [$path, $stub]];
     }
 
     // -------------------------------------------------------------------------
@@ -348,7 +437,7 @@ PHP;
 
     private function getFillableFields(string $model): array
     {
-        $modelClass = "App\\Models\\$model";
+        $modelClass = GeneratorPath::modelClass($model);
 
         if (! class_exists($modelClass)) {
             return [];

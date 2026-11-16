@@ -39,6 +39,9 @@ return [
         // Target directory for make:repo and make:api-scaffold repositories.
         'repositories' => 'app/Repositories',
 
+        // Target directory for make:repo --with-interface interfaces.
+        'repository_interfaces' => 'app/Repositories/Contracts',
+
         // Target directory for make:service.
         'services' => 'app/Services',
 
@@ -54,8 +57,14 @@ return [
         // Target directory for generated resource collections.
         'resource_collections' => 'app/Http/Resources/Collections',
 
-        // Target directory for generated form request classes.
+        // Target directory for make:request, make:api-endpoint and make:api-scaffold requests.
         'requests' => 'app/Http/Requests',
+
+        // Target directory for make:api-scaffold --with-tests feature tests.
+        'tests' => 'tests/Feature',
+
+        // Target directory for make:api-scaffold --with-factory model factories.
+        'factories' => 'database/factories',
 
         // Directories model:prune-orphaned and model:analyze scan for models.
         'model_scan' => [
@@ -158,6 +167,10 @@ return [
     // Root directory searched for references before a model is called orphaned.
     'prune_search_root' => 'app',
 
+    // When true (default), the schema dump includes the schema prefix.
+    // Set to false to generate schema-agnostic dumps that can be run against any database schema.
+    'schema_dump_include_schema' => true,
+
     /*
     |--------------------------------------------------------------------------
     | Custom Commands
@@ -193,6 +206,9 @@ return [
         // Appends a single method and form request to an existing controller.
         'make:api-endpoint' => \Masgeek\ArtisanToolkit\Commands\MakeApiEndpointCommand::class,
 
+        // Creates a FormRequest, optionally inferring rules from a model's columns.
+        'make:request' => \Masgeek\ArtisanToolkit\Commands\MakeRequestCommand::class,
+
         // Model tools --------------------------------------------------------
 
         // Lists a model's relationships, including those on its base model.
@@ -206,6 +222,9 @@ return [
 
         // Reports model attributes that are never referenced in the codebase.
         'model:find-unused' => \Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand::class,
+
+        // Compares $fillable and $casts against the model's actual table columns.
+        'model:fillable-audit' => \Masgeek\ArtisanToolkit\Commands\ModelFillableAuditCommand::class,
 
         // Queues -------------------------------------------------------------
 
@@ -222,6 +241,12 @@ return [
 
         // Compares this config against the package defaults.
         'config:diff' => \Masgeek\ArtisanToolkit\Commands\ConfigDiffCommand::class,
+
+        // Compares two env files by key without printing any values.
+        'env:diff' => \Masgeek\ArtisanToolkit\Commands\EnvDiffCommand::class,
+
+        // Fixes an env file by adding missing keys and commenting duplicates/empty values.
+        'env:fix' => \Masgeek\ArtisanToolkit\Commands\EnvFixCommand::class,
 
         // Runs a single seeder class without the full DatabaseSeeder.
         'db:seed-partial' => \Masgeek\ArtisanToolkit\Commands\DbSeedPartialCommand::class,
