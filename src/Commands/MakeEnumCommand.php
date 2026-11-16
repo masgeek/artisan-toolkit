@@ -15,7 +15,8 @@ class MakeEnumCommand extends Command
                                 {--backed= : Backing type: string or int (omit for a pure enum)}
                                 {--cases= : Comma-separated case names to stub out}
                                 {--table= : Generate cases from distinct values of a DB column (e.g. users.role)}
-                                {--force : Overwrite if the file already exists}';
+                                {--force : Overwrite if the file already exists}
+                                {--dry-run : Show the file that would be created without writing it}';
 
     protected $description = 'Create a new PHP enum in the configured paths.enums directory';
 
@@ -45,6 +46,12 @@ class MakeEnumCommand extends Command
             $this->components->error("Enum [{$filePath}] already exists. Use --force to overwrite.");
 
             return self::FAILURE;
+        }
+
+        if ($this->option('dry-run')) {
+            $this->components->info("[dry-run] Would create: {$filePath}");
+
+            return self::SUCCESS;
         }
 
         $files->ensureDirectoryExists(dirname($filePath));

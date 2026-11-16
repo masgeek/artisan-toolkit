@@ -11,7 +11,10 @@ use Masgeek\ArtisanToolkit\Support\GeneratorPath;
 
 final class MakeServiceCommand extends Command
 {
-    protected $signature = 'make:service {name : The Service class name}';
+    protected $signature = 'make:service 
+                            {name : The Service class name} 
+                            {--force : Overwrite an existing service} 
+                            {--dry-run : Show the file that would be created without writing it}';
 
     protected $description = 'Create a new Service class';
 
@@ -21,13 +24,11 @@ final class MakeServiceCommand extends Command
         $namespace = GeneratorPath::namespaceFor('services', 'app/Services');
         $filePath = GeneratorPath::to('services', 'app/Services')."/{$name}Service.php";
 
-        if ($files->exists($filePath)) {
-            $this->error("Service [{$name}Service] already exists.");
+        if ($files->exists($filePath) && ! $this->option('force')) {
+            $this->error("Service [{$name}Service] already exists. Use --force to overwrite.");
             return self::FAILURE;
         }
 
-        $files->ensureDirectoryExists(dirname($filePath));
-        
         $content = implode("\n", [
             '<?php',
             '',
@@ -46,6 +47,13 @@ final class MakeServiceCommand extends Command
             '}',
         ]);
 
+        if ($this->option('dry-run')) {
+            $this->line(" <fg=cyan>[dry-run]</> Would create: {$filePath}");
+
+            return self::SUCCESS;
+        }
+
+        $files->ensureDirectoryExists(dirname($filePath));
         $files->put($filePath, $content);
 
         $this->info("Service [{$filePath}] created successfully.");

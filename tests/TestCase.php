@@ -8,6 +8,7 @@ use Masgeek\ArtisanToolkit\Commands\MakeApiScaffoldCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeEnumCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeFullResourceCommand;
 use Masgeek\ArtisanToolkit\Commands\MakeRepositoryCommand;
+use Masgeek\ArtisanToolkit\Commands\MakeRequestCommand;
 use Masgeek\ArtisanToolkit\Commands\ModelFindUnusedCommand;
 use Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand;
 use Masgeek\ArtisanToolkit\Commands\RotateAppKey;
@@ -35,6 +36,7 @@ abstract class TestCase extends OrchestraTestCase
             'make:api-scaffold' => MakeApiScaffoldCommand::class,
             'make:resource-full' => MakeFullResourceCommand::class,
             'make:repo' => MakeRepositoryCommand::class,
+            'make:request' => MakeRequestCommand::class,
             'model:relations' => ListModelRelationsCommand::class,
             'model:prune-orphaned' => PruneOrphanedModelsCommand::class,
             'model:find-unused' => ModelFindUnusedCommand::class,

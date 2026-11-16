@@ -34,6 +34,8 @@ class GeneratedCodeSyntaxTest extends TestCase
         ])->assertSuccessful();
 
         $this->artisan('make:repo', ['name' => 'PostRepo', '--model' => 'Post'])->assertSuccessful();
+        $this->artisan('make:repo', ['name' => 'InvoiceRepo', '--with-interface' => true])->assertSuccessful();
+        $this->artisan('make:request', ['name' => 'StoreUserRequest'])->assertSuccessful();
         $this->artisan('make:service', ['name' => 'Billing'])->assertSuccessful();
         $this->artisan('make:dto', ['name' => 'UserData'])->assertSuccessful();
         $this->artisan('make:api-scaffold', ['name' => 'Currency', '--no-route' => true])->assertSuccessful();

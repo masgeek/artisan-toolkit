@@ -110,4 +110,45 @@ class MakeRepositoryCommandTest extends TestCase
         $this->assertStringContainsString('class LegacyRepo extends BaseRepository', $content);
         $this->assertStringContainsString('use App\Repositories\BaseRepository;', $content);
     }
+
+    public function test_it_creates_a_matching_interface(): void
+    {
+        $this->artisan('make:repo', [
+            'name' => 'UserRepo',
+            '--with-interface' => true,
+        ])->assertSuccessful();
+
+        $interface = app_path('Repositories/Contracts/UserRepoInterface.php');
+        $this->assertFileExists($interface);
+        $this->assertStringContainsString('interface UserRepoInterface', File::get($interface));
+
+        $repo = File::get($this->repositoriesPath.'/UserRepo.php');
+        $this->assertStringContainsString('use App\Repositories\Contracts\UserRepoInterface;', $repo);
+        $this->assertStringContainsString('class UserRepo extends BaseRepo implements UserRepoInterface', $repo);
+        $this->assertStringContainsString('public function model(): string', $repo);
+    }
+
+    public function test_it_fails_when_the_interface_already_exists(): void
+    {
+        File::ensureDirectoryExists(app_path('Repositories/Contracts'));
+        File::put(app_path('Repositories/Contracts/UserRepoInterface.php'), '<?php');
+
+        $this->artisan('make:repo', [
+            'name' => 'UserRepo',
+            '--with-interface' => true,
+        ])->assertFailed();
+    }
+
+    public function test_it_supports_dry_run(): void
+    {
+        $this->artisan('make:repo', [
+            'name' => 'DraftRepo',
+            '--with-interface' => true,
+            '--dry-run' => true,
+        ])->assertSuccessful()
+            ->expectsOutputToContain('dry-run');
+
+        $this->assertFileDoesNotExist($this->repositoriesPath.'/DraftRepo.php');
+        $this->assertFileDoesNotExist(app_path('Repositories/Contracts/DraftRepoInterface.php'));
+    }
 }

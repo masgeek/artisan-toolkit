@@ -42,6 +42,7 @@ class ArtisanToolkitServiceProvider extends ServiceProvider
                 'make:dto' => \Masgeek\ArtisanToolkit\Commands\MakeDtoCommand::class,
                 'make:service' => \Masgeek\ArtisanToolkit\Commands\MakeServiceCommand::class,
                 'make:api-endpoint' => \Masgeek\ArtisanToolkit\Commands\MakeApiEndpointCommand::class,
+                'make:request' => \Masgeek\ArtisanToolkit\Commands\MakeRequestCommand::class,
                 'model:relations' => \Masgeek\ArtisanToolkit\Commands\ListModelRelationsCommand::class,
                 'model:prune-orphaned' => \Masgeek\ArtisanToolkit\Commands\PruneOrphanedModelsCommand::class,
                 'model:analyze' => \Masgeek\ArtisanToolkit\Commands\ModelAnalyzeCommand::class,

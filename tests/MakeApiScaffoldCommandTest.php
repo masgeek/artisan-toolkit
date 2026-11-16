@@ -34,6 +34,8 @@ class MakeApiScaffoldCommandTest extends TestCase
         File::deleteDirectory(app_path('Http/Controllers'));
         File::deleteDirectory(app_path('Http/Requests'));
         File::deleteDirectory(app_path('Repositories'));
+        File::delete(base_path('tests/Feature/Api/CurrencyControllerTest.php'));
+        File::delete(base_path('database/factories/CurrencyFactory.php'));
         if (File::exists(base_path('routes/api.php'))) {
             File::delete(base_path('routes/api.php'));
         }
@@ -167,6 +169,21 @@ class MakeApiScaffoldCommandTest extends TestCase
         $this->assertStringContainsString('v1/my-currencies', $routesContent);
     }
 
+    public function test_it_uses_configured_api_version_in_route(): void
+    {
+        config()->set('artisan-toolkit.api_version', 'v2');
+
+        File::ensureDirectoryExists(base_path('routes'));
+        File::put(base_path('routes/api.php'), "<?php\n\nRoute::middleware('throttle:120,1')->group(function () {\n\n});\n\n// Mutating");
+
+        $this->artisan('make:api-scaffold', ['name' => 'Currency'])
+            ->assertSuccessful();
+
+        $routesContent = File::get(base_path('routes/api.php'));
+        $this->assertStringContainsString('v2/currencies', $routesContent);
+        $this->assertStringNotContainsString('v1/currencies', $routesContent);
+    }
+
     public function test_it_skips_duplicate_route_prefix(): void
     {
         File::ensureDirectoryExists(base_path('routes'));
@@ -296,6 +313,34 @@ class MakeApiScaffoldCommandTest extends TestCase
         $this->assertStringContainsString("'description' => \$this->description,", $resourceContent);
         $this->assertStringContainsString("'created_at' => \$this->formatDate(\$this->created_at),", $resourceContent);
         $this->assertStringContainsString("'updated_at' => \$this->formatDate(\$this->updated_at),", $resourceContent);
+    }
+
+    public function test_it_generates_a_test_and_factory_when_requested(): void
+    {
+        $testPath = base_path('tests/Feature/Api/CurrencyControllerTest.php');
+        $factoryPath = base_path('database/factories/CurrencyFactory.php');
+        File::delete($testPath);
+        File::delete($factoryPath);
+
+        $this->artisan('make:api-scaffold', [
+            'name' => 'Currency',
+            '--no-route' => true,
+            '--with-tests' => true,
+            '--with-factory' => true,
+        ])->assertSuccessful();
+
+        $this->assertFileExists($testPath);
+        $this->assertPhpSyntax($testPath);
+        $test = File::get($testPath);
+        $this->assertStringContainsString('namespace Tests\Feature\Api;', $test);
+        $this->assertStringContainsString('class CurrencyControllerTest extends TestCase', $test);
+        $this->assertStringContainsString('/v1/currencies', $test);
+
+        $this->assertFileExists($factoryPath);
+        $this->assertPhpSyntax($factoryPath);
+        $factory = File::get($factoryPath);
+        $this->assertStringContainsString('class CurrencyFactory extends Factory', $factory);
+        $this->assertStringContainsString('protected $model = Currency::class;', $factory);
     }
 
     public function test_it_falls_back_to_placeholders_when_model_table_missing(): void
