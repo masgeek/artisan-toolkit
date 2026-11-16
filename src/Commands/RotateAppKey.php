@@ -85,7 +85,7 @@ class RotateAppKey extends Command
 
         $this->newLine();
         $this->info("Total records to be re-encrypted: {$total}");
-        $this->line('Run without --dry-run to execute rotation.');
+        $this->line('Run with --apply to execute rotation.');
 
         return Command::SUCCESS;
     }
