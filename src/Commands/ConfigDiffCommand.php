@@ -48,16 +48,24 @@ final class ConfigDiffCommand extends Command
     /** @var array<string, int> */
     private array $counts = [];
 
-    protected $signature = 'config:diff {--fail : Exit with a failure code when differences are found}';
+    /** @var list<array{status: string, path: list<string>, default: mixed, yours: mixed, default_exists: bool, user_exists: bool}> */
+    private array $rawRows = [];
+
+    protected $signature = 'config:diff 
+                            {--fail : Exit with a failure code when differences are found} 
+                            {--status= : Only include these comma-separated statuses (added, modified, unset, ...)} 
+                            {--json : Emit the diff as JSON instead of a table}';
 
     protected $description = 'Compare published config with package defaults';
 
     public function handle(): int
     {
-        $this->newLine();
-        $this->line(' <options=bold;fg=cyan>Toolkit Configuration Diff</>');
-        $this->line(' Comparing <comment>config/artisan-toolkit.php</comment> with package defaults.');
-        $this->newLine();
+        if (! $this->option('json')) {
+            $this->newLine();
+            $this->line(' <options=bold;fg=cyan>Toolkit Configuration Diff</>');
+            $this->line(' Comparing <comment>config/artisan-toolkit.php</comment> with package defaults.');
+            $this->newLine();
+        }
 
         // Load the shipped defaults directly so this command can never drift
         // from config/artisan-toolkit.php.
@@ -79,20 +87,116 @@ final class ConfigDiffCommand extends Command
 
         $this->rows = [];
         $this->counts = [];
+        $this->rawRows = [];
 
         $this->diffMap([], $defaults, $userConfig);
 
-        if ($this->rows === []) {
-            $this->line(' <fg=green>✔ Config is identical to defaults.</>');
-            $this->newLine();
+        if ($this->rawRows === []) {
+            if ($this->option('json')) {
+                $this->line((string) json_encode(['differences' => 0, 'rows' => []], JSON_PRETTY_PRINT));
+            } else {
+                $this->line(' <fg=green>✔ Config is identical to defaults.</>');
+                $this->newLine();
+            }
 
             return self::SUCCESS;
+        }
+
+        $filtered = $this->filterByStatus($this->rawRows, $this->option('status'));
+
+        foreach ($filtered as $raw) {
+            $this->counts[$raw['status']] = ($this->counts[$raw['status']] ?? 0) + 1;
+        }
+
+        if ($this->option('json')) {
+            $this->line((string) json_encode([
+                'differences' => count($filtered),
+                'rows' => array_map(fn (array $raw): array => [
+                    'status' => $raw['status'],
+                    'key' => implode('.', $raw['path']),
+                    'default' => $raw['default_exists']
+                        ? $this->jsonValue($raw['default'], $raw['path'][count($raw['path']) - 1])
+                        : null,
+                    'yours' => $raw['user_exists']
+                        ? $this->jsonValue($raw['yours'], $raw['path'][count($raw['path']) - 1])
+                        : null,
+                ], $filtered),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+            return $this->option('fail') ? self::FAILURE : self::SUCCESS;
+        }
+
+        if ($filtered === []) {
+            $this->warn(' No differences match the requested status filter.');
+            $this->newLine();
+
+            return $this->option('fail') ? self::FAILURE : self::SUCCESS;
+        }
+
+        foreach ($filtered as $raw) {
+            $this->rows[] = $this->rowFromRaw($raw);
         }
 
         $this->renderTable();
         $this->renderSummary();
 
         return $this->option('fail') ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param  list<array{status: string, path: list<string>, default: mixed, yours: mixed, default_exists: bool, user_exists: bool}>  $rows
+     * @return list<array{status: string, path: list<string>, default: mixed, yours: mixed, default_exists: bool, user_exists: bool}>
+     */
+    private function filterByStatus(array $rows, ?string $statuses): array
+    {
+        if ($statuses === null || trim($statuses) === '') {
+            return $rows;
+        }
+
+        $allowed = array_map(
+            static fn (string $status): string => strtolower(trim($status)),
+            explode(',', $statuses),
+        );
+
+        return array_values(array_filter(
+            $rows,
+            static fn (array $row): bool => in_array($row['status'], $allowed, true),
+        ));
+    }
+
+    /**
+     * @param  array{status: string, path: list<string>, default: mixed, yours: mixed, default_exists: bool, user_exists: bool}  $raw
+     * @return array{0: string, 1: string, 2: string, 3: string}
+     */
+    private function rowFromRaw(array $raw): array
+    {
+        $key = $raw['path'][count($raw['path']) - 1];
+
+        return [
+            $this->badge($raw['status']),
+            $this->label($raw['path']),
+            $raw['default_exists'] ? $this->format($raw['default'], $key) : '<fg=gray>—</>',
+            $raw['user_exists'] ? $this->format($raw['yours'], $key) : '<fg=gray>—</>',
+        ];
+    }
+
+    private function jsonValue(mixed $value, string $key = ''): mixed
+    {
+        if (is_array($value)) {
+            $masked = [];
+
+            foreach ($value as $itemKey => $item) {
+                $masked[$itemKey] = $this->jsonValue($item, (string) $itemKey);
+            }
+
+            return $masked;
+        }
+
+        if (is_string($value) && $value !== '' && $this->isSensitive($key)) {
+            return '••••••••';
+        }
+
+        return $value;
     }
 
     /**
@@ -135,14 +239,14 @@ final class ConfigDiffCommand extends Command
         }
 
         $status = $this->status($default, $user, $defaultExists, $userExists);
-        $key = (string) end($path);
 
-        $this->counts[$status] = ($this->counts[$status] ?? 0) + 1;
-        $this->rows[] = [
-            $this->badge($status),
-            $this->label($path),
-            $defaultExists ? $this->format($default, $key) : '<fg=gray>—</>',
-            $userExists ? $this->format($user, $key) : '<fg=gray>—</>',
+        $this->rawRows[] = [
+            'status' => $status,
+            'path' => $path,
+            'default' => $default,
+            'yours' => $user,
+            'default_exists' => $defaultExists,
+            'user_exists' => $userExists,
         ];
     }
 

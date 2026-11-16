@@ -114,6 +114,45 @@ class ModelFindUnusedCommandTest extends TestCase
             ->expectsOutputToContain('Skipping');
     }
 
+    public function test_it_previews_a_fix_migration_without_writing(): void
+    {
+        $this->createPostModel();
+        $this->createPostTable();
+        File::put($this->searchPath.'/PostController.php', '<?php $post->title;');
+
+        $this->artisan('model:find-unused', [
+            '--search' => $this->searchPath,
+            '--fix' => true,
+        ])->assertSuccessful()
+            ->expectsOutputToContain('Dry run');
+    }
+
+    public function test_it_writes_a_fix_migration_with_apply(): void
+    {
+        $migrations = database_path('migrations');
+        File::deleteDirectory($migrations);
+        File::makeDirectory($migrations, 0755, true);
+
+        $this->createPostModel();
+        $this->createPostTable();
+        File::put($this->searchPath.'/PostController.php', '<?php $post->title;');
+
+        $this->artisan('model:find-unused', [
+            '--search' => $this->searchPath,
+            '--fix' => true,
+            '--apply' => true,
+        ])->assertSuccessful()
+            ->expectsOutputToContain('Migration written');
+
+        $files = File::files($migrations);
+        $this->assertCount(1, $files);
+
+        $content = (string) file_get_contents($files[0]->getPathname());
+        $this->assertStringContainsString("dropColumn(['body'])", $content);
+
+        File::deleteDirectory($migrations);
+    }
+
     private function createPostTable(): void
     {
         Schema::create('find_unused_posts', function ($table) {

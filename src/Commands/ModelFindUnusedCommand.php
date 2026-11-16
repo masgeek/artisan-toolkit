@@ -24,6 +24,8 @@ final class ModelFindUnusedCommand extends Command
                             {--search= : Root directory to scan for references (defaults to prune_search_root)}
                             {--exclude=* : Extra column names to treat as always used}
                             {--include-timestamps : Report timestamp/soft-delete columns instead of skipping them}
+                            {--fix : Generate a migration that drops the unused columns}
+                            {--apply : With --fix, write the migration file (dry run by default)}
                             {--json : Emit results as JSON instead of a table}';
 
     protected $description = 'Find model attributes that are never referenced anywhere in the codebase';
@@ -68,9 +70,28 @@ final class ModelFindUnusedCommand extends Command
             array_push($unused, ...$result);
         }
 
+        $fix = null;
+
+        if ($this->option('fix') || $this->option('apply')) {
+            $fix = $this->planMigration($unused);
+
+            if ($fix !== null && $this->option('apply')) {
+                $files->ensureDirectoryExists(dirname($fix['path']));
+                $files->put($fix['path'], $fix['contents']);
+            }
+        }
+
         if ($this->option('json')) {
             $this->line((string) json_encode(
-                ['inspected' => $inspected, 'skipped' => $skipped, 'unused' => $unused],
+                [
+                    'inspected' => $inspected,
+                    'skipped' => $skipped,
+                    'unused' => $unused,
+                    'migration' => $fix === null ? null : [
+                        'path' => $fix['path'],
+                        'applied' => (bool) $this->option('apply'),
+                    ],
+                ],
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
             ));
 
@@ -83,7 +104,83 @@ final class ModelFindUnusedCommand extends Command
 
         $this->render($unused, $inspected);
 
+        if ($this->option('fix') || $this->option('apply')) {
+            if ($fix === null) {
+                $this->line(' <fg=gray>No migration needed.</>');
+            } elseif ($this->option('apply')) {
+                $this->info(" Migration written: {$fix['path']}");
+            } else {
+                $this->warn(" Dry run: would write migration {$fix['path']} (pass --apply to write).");
+            }
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Build a migration that drops the reported columns, grouped by table.
+     *
+     * @param  list<array{class: string, table: string, column: string}>  $unused
+     * @return array{path: string, contents: string}|null
+     */
+    private function planMigration(array $unused): ?array
+    {
+        if ($unused === []) {
+            return null;
+        }
+
+        $byTable = [];
+
+        foreach ($unused as $item) {
+            $byTable[$item['table']][] = $item['column'];
+        }
+
+        ksort($byTable);
+
+        $blocks = [];
+
+        foreach ($byTable as $table => $columns) {
+            $columns = array_values(array_unique($columns));
+            $quoted = implode(', ', array_map(
+                static fn (string $column): string => "'".str_replace("'", "\\'", $column)."'",
+                $columns,
+            ));
+            $tableName = str_replace("'", "\\'", (string) $table);
+
+            $blocks[] = <<<PHP
+        Schema::table('{$tableName}', function (Blueprint \$table) {
+            \$table->dropColumn([{$quoted}]);
+        });
+PHP;
+        }
+
+        $body = implode("\n\n", $blocks);
+
+        $contents = <<<PHP
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+{$body}
+    }
+
+    public function down(): void
+    {
+        // Dropped columns cannot be restored automatically.
+    }
+};
+PHP;
+
+        return [
+            'path' => database_path('migrations/'.date('Y_m_d_His').'_drop_unused_columns.php'),
+            'contents' => $contents,
+        ];
     }
 
     /**
